@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Камалов — ведущий свадеб, корпоративов и дней рождения." />
+    <title>Kamalov — ведущий</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css?v=20260825-2720" />
+  </head>
+  <body data-page="home">
+    <header class="site-header" aria-label="Основная навигация">
+      <nav class="site-header__group">
+        <button type="button" data-page-target="home">Главная</button>
+        <button type="button" data-page-target="showreel">Шоурил</button>
+      </nav>
+
+      <nav class="site-header__group" aria-label="Контакты">
+        <a href="https://t.me/santa_jackson" target="_blank" rel="noopener noreferrer" aria-label="Telegram">.ТГ</a>
+        <a href="https://www.instagram.com/santa_jackson?igsi=MXhzbGswcnd6OHBvaA%3D%3D&amp;utm_source=qr" target="_blank" rel="noopener noreferrer" aria-label="Instagram">.ИНСТ</a>
+        <a href="tel:+79869119192" aria-label="Позвонить: +7 986 911-91-92">.МОБ</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero page" id="home" aria-labelledby="hero-title">
+        <div class="hero__stage">
+          <picture class="hero__portrait" aria-hidden="true">
+            <source media="(max-width: 1023px)" srcset="portrait-layer-mobile.png?v=20260825-2" />
+            <img src="portrait-layer.png?v=20260825-2" alt="" />
+          </picture>
+
+          <div class="hero__title-wrap">
+            <p class="hero__role">Ведущий</p>
+            <h1 class="hero__title" id="hero-title">Kamalov</h1>
+          </div>
+
+          <div class="hero__actions">
+            <button class="outline-button" type="button" data-contact>Связаться</button>
+            <button class="outline-button" type="button" data-page-target="showreel">Шоурил</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="showreel page" id="showreel" aria-labelledby="active-showreel-title" hidden>
+        <div class="showreel__desktop">
+          <h2 class="visually-hidden" id="active-showreel-title">Дни рождения</h2>
+
+          <nav class="showreel__categories" aria-label="Категории шоурила">
+            <button type="button" data-showreel-index="0">Свадьбы</button>
+            <button type="button" data-showreel-index="1">Корпоративы</button>
+            <button type="button" data-showreel-index="2">Дни рождения</button>
+          </nav>
+
+          <div class="showreel-card__media" id="desktop-video">
+            <button class="play-button" type="button" aria-label="Смотреть: Свадьбы">
+              <img src="play.svg" alt="" />
+            </button>
+          </div>
+
+          <div class="showreel__swipe-surface" aria-hidden="true"></div>
+
+          <div class="showreel__navigation" aria-label="Переключить видео">
+            <button type="button" id="previous-video" aria-label="Предыдущее видео" disabled>
+              <img src="previous.svg" alt="" />
+            </button>
+            <button type="button" id="next-video" aria-label="Следующее видео">
+              <img src="next.svg" alt="" />
+            </button>
+          </div>
+        </div>
+
+        <div class="showreel__mobile">
+          <nav class="showreel__mobile-tabs" aria-label="Категории шоурила">
+            <button type="button" data-mobile-showreel-index="0">Свадьбы</button>
+            <button type="button" data-mobile-showreel-index="1">Корпоративы</button>
+            <button type="button" data-mobile-showreel-index="2">Дни рождения</button>
+          </nav>
+
+          <div class="showreel__mobile-feed" id="mobile-showreel-feed">
+            <article class="showreel-card" data-mobile-card-index="0">
+              <h2>Свадьбы</h2>
+              <div class="showreel-card__media">
+                <button class="play-button" type="button" aria-label="Смотреть: Свадьбы">
+                  <img src="play.svg" alt="" />
+                </button>
+              </div>
+            </article>
+            <article class="showreel-card" data-mobile-card-index="1">
+              <h2>Корпоративы</h2>
+              <div class="showreel-card__media">
+                <button class="play-button" type="button" aria-label="Смотреть: Корпоративы">
+                  <img src="play.svg" alt="" />
+                </button>
+              </div>
+            </article>
+            <article class="showreel-card" data-mobile-card-index="2">
+              <h2>Дни рождения</h2>
+              <div class="showreel-card__media">
+                <button class="play-button" type="button" aria-label="Смотреть: Дни рождения">
+                  <img src="play.svg" alt="" />
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="contact-dialog" id="contacts">
+      <form method="dialog">
+        <button class="contact-dialog__close" aria-label="Закрыть">×</button>
+        <p class="contact-dialog__eyebrow">Контакты</p>
+        <h2>Добавьте свои ссылки</h2>
+        <p>
+          Укажите Telegram, Instagram и номер телефона в константе
+          <code>SOCIAL_LINKS</code> в файле <code>app.js</code>.
+        </p>
+        <button class="outline-button" value="close">Понятно</button>
+      </form>
+    </dialog>
+
+    <script type="module" src="app.js?v=20260824-2709"></script>
+  </body>
+</html>
