@@ -449,9 +449,18 @@ button { font: inherit; }
   width: 32px;
   height: 32px;
   border: 0;
+  outline: 0;
   padding: 0;
   background: transparent;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
   cursor: pointer;
+}
+
+.contact-dialog__close:focus,
+.contact-dialog__close:focus-visible {
+  outline: 0;
+  box-shadow: none;
 }
 
 .contact-dialog__close img {
@@ -566,8 +575,8 @@ button { font: inherit; }
 
   .hero__title-wrap {
     top: max(
-      calc(var(--stage-width) * 60 / 390),
-      calc(env(safe-area-inset-top) + 12px)
+      calc(var(--stage-width) * 40 / 390),
+      env(safe-area-inset-top)
     );
     padding: 0;
   }
@@ -581,11 +590,13 @@ button { font: inherit; }
   .hero__role {
     position: static;
     margin: 0;
+    margin-bottom: -0.18em;
     color: #fff;
     font-size: calc(var(--stage-width) * 40 / 390);
-    line-height: 1;
+    line-height: 1.18;
     text-align: center;
     opacity: 0.6;
+    overflow: visible;
   }
 
   .hero__actions {
@@ -630,16 +641,7 @@ button { font: inherit; }
       )
     );
     --showreel-mobile-media-width: calc(var(--showreel-mobile-media-height) * 9 / 16);
-    --showreel-mobile-content-offset: max(
-      0px,
-      calc(
-        (
-          100svh - var(--showreel-mobile-tabs-height) -
-          var(--showreel-mobile-media-height) - var(--showreel-mobile-title-space) -
-          var(--showreel-mobile-safe-bottom)
-        ) / 2
-      )
-    );
+    --showreel-mobile-content-offset: 0px;
 
     display: grid;
     height: 100svh;
