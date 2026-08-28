@@ -406,7 +406,25 @@ button { font: inherit; }
   background: #000;
 }
 
+.showreel-poster iframe {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.showreel-poster--playing iframe {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .showreel-poster__image {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
@@ -417,12 +435,13 @@ button { font: inherit; }
   position: absolute;
   inset: 0;
   background: rgb(0 0 0 / 24%);
+  z-index: 2;
   pointer-events: none;
 }
 
 .showreel-poster__play {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   top: 50%;
   left: 50%;
   width: 80px;
@@ -440,6 +459,12 @@ button { font: inherit; }
   display: block;
   width: 80px;
   height: 80px;
+}
+
+.showreel-poster--playing .showreel-poster__image,
+.showreel-poster--playing .showreel-poster__shade,
+.showreel-poster--playing .showreel-poster__play {
+  visibility: hidden;
 }
 
 .play-button {
