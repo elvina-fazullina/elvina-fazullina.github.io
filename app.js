@@ -66,6 +66,7 @@ let pullRefreshStartY = 0
 let pullRefreshDistance = 0
 let pullRefreshTracking = false
 let pullRefreshActive = false
+let activeVimeoOverlay = null
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -202,6 +203,34 @@ function pauseAllShowreelMedia(exceptMedia = null) {
   document.querySelectorAll('.showreel-card__media').forEach((media) => {
     if (media !== exceptMedia) pauseShowreelMedia(media)
   })
+
+  activeVimeoOverlay?.querySelector('iframe')?.contentWindow?.postMessage(
+    JSON.stringify({ method: 'pause' }),
+    'https://player.vimeo.com',
+  )
+}
+
+function closeMobileVimeo({ exitFullscreen = true } = {}) {
+  if (!activeVimeoOverlay) return
+
+  const overlay = activeVimeoOverlay
+  activeVimeoOverlay = null
+  overlay.querySelector('iframe')?.contentWindow?.postMessage(
+    JSON.stringify({ method: 'pause' }),
+    'https://player.vimeo.com',
+  )
+  overlay.remove()
+  document.body.classList.remove('has-vimeo-fullscreen')
+
+  const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+  if (exitFullscreen && fullscreenElement === overlay) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen
+    try {
+      exit?.call(document)
+    } catch {
+      // The browser may already be leaving fullscreen.
+    }
+  }
 }
 
 function resetMobileFeed() {
@@ -419,7 +448,10 @@ function finishDesktopSwipe(event, allowSwitch = true) {
 function renderPage(page) {
   const isShowreel = page === 'showreel'
 
-  if (!isShowreel) pauseAllShowreelMedia()
+  if (!isShowreel) {
+    pauseAllShowreelMedia()
+    closeMobileVimeo()
+  }
 
   document.body.dataset.page = isShowreel ? 'showreel' : 'home'
   homePage.hidden = isShowreel
@@ -518,7 +550,10 @@ function createVimeoIframe(item, { autoplay = false, fullscreenOnPlay = false } 
   const url = new URL(item.vimeo)
 
   if (autoplay) url.searchParams.set('autoplay', '1')
-  if (fullscreenOnPlay) url.searchParams.set('playsinline', '0')
+  if (fullscreenOnPlay) {
+    url.searchParams.set('playsinline', '0')
+    url.searchParams.set('autopause', '0')
+  }
 
   iframe.src = url.toString()
   iframe.title = `Vimeo: ${item.title}`
@@ -529,9 +564,46 @@ function createVimeoIframe(item, { autoplay = false, fullscreenOnPlay = false } 
   return iframe
 }
 
+function openMobileVimeo(item) {
+  closeMobileVimeo()
+  pauseAllShowreelMedia()
+
+  const overlay = document.createElement('div')
+  const iframe = createVimeoIframe(item, { autoplay: true, fullscreenOnPlay: true })
+  const closeButton = document.createElement('button')
+
+  overlay.className = 'vimeo-fullscreen'
+  overlay.setAttribute('role', 'dialog')
+  overlay.setAttribute('aria-label', `Видео: ${item.title}`)
+  closeButton.className = 'vimeo-fullscreen__close'
+  closeButton.type = 'button'
+  closeButton.setAttribute('aria-label', 'Закрыть видео')
+  iframe.loading = 'eager'
+  overlay.append(iframe, closeButton)
+  document.body.append(overlay)
+  document.body.classList.add('has-vimeo-fullscreen')
+  activeVimeoOverlay = overlay
+
+  const sendPlayerCommand = (method) => {
+    iframe.contentWindow?.postMessage(JSON.stringify({ method }), 'https://player.vimeo.com')
+  }
+
+  sendPlayerCommand('play')
+  iframe.addEventListener('load', () => sendPlayerCommand('play'), { once: true })
+  closeButton.addEventListener('click', () => closeMobileVimeo())
+
+  const requestFullscreen = overlay.requestFullscreen || overlay.webkitRequestFullscreen
+  if (requestFullscreen) {
+    try {
+      requestFullscreen.call(overlay)?.catch?.(() => {})
+    } catch {
+      // The fixed overlay remains full-screen if the native API is unavailable.
+    }
+  }
+}
+
 function createVimeoPoster(item, media) {
   const poster = document.createElement('div')
-  const iframe = createVimeoIframe(item, { fullscreenOnPlay: true })
   const image = document.createElement('img')
   const shade = document.createElement('span')
   const button = document.createElement('button')
@@ -548,32 +620,9 @@ function createVimeoPoster(item, media) {
   icon.src = MOBILE_SHOWREEL_PLAY_ICON
   icon.alt = ''
   button.append(icon)
-  iframe.loading = 'eager'
-  poster.append(iframe, image, shade, button)
+  poster.append(image, shade, button)
 
-  button.addEventListener('click', () => {
-    media.classList.add('showreel-card__media--vimeo')
-    poster.classList.add('showreel-poster--playing')
-
-    const sendPlayerCommand = (method) => {
-      iframe.contentWindow?.postMessage(JSON.stringify({ method }), 'https://player.vimeo.com')
-    }
-
-    sendPlayerCommand('play')
-    sendPlayerCommand('requestFullscreen')
-
-    const requestFullscreen = iframe.requestFullscreen || iframe.webkitRequestFullscreen
-    if (requestFullscreen) {
-      try {
-        const fullscreenRequest = requestFullscreen.call(iframe)
-        fullscreenRequest?.catch(() => sendPlayerCommand('requestFullscreen'))
-      } catch {
-        sendPlayerCommand('requestFullscreen')
-      }
-    }
-
-    iframe.addEventListener('load', () => sendPlayerCommand('play'), { once: true })
-  })
+  button.addEventListener('click', () => openMobileVimeo(item))
 
   return poster
 }
@@ -810,6 +859,11 @@ nextButton.addEventListener('click', () => {
 })
 
 window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && activeVimeoOverlay) {
+    closeMobileVimeo()
+    return
+  }
+
   if (document.body.dataset.page !== 'showreel') return
 
   if (window.matchMedia('(max-width: 1023px)').matches) {
@@ -841,6 +895,16 @@ window.addEventListener('popstate', () => {
 })
 
 window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActionState))
+
+document.addEventListener('fullscreenchange', () => {
+  if (activeVimeoOverlay?.dataset.enteredFullscreen === 'true' && !document.fullscreenElement) {
+    closeMobileVimeo({ exitFullscreen: false })
+    return
+  }
+  if (document.fullscreenElement === activeVimeoOverlay) {
+    activeVimeoOverlay.dataset.enteredFullscreen = 'true'
+  }
+})
 
 window.addEventListener('pagehide', () => pauseAllShowreelMedia())
 document.addEventListener('visibilitychange', () => {
