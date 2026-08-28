@@ -445,6 +445,15 @@ button { font: inherit; }
   height: 80px;
 }
 
+.showreel-native-video {
+  position: absolute;
+  z-index: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .has-vimeo-fullscreen { overflow: hidden; }
 
 .vimeo-fullscreen {

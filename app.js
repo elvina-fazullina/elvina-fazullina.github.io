@@ -17,6 +17,7 @@ const SHOWREELS = [
     title: 'Дни рождения',
     vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
     mobilePoster: 'showreel-birthday-poster.png',
+    mobileVideo: 'showreel-birthday.mp4',
   },
 ]
 
@@ -602,8 +603,42 @@ function openMobileVimeo(item) {
   }
 }
 
+function openNativeVideo(video) {
+  pauseAllShowreelMedia(video.closest('.showreel-card__media'))
+  video.currentTime = 0
+  video.muted = false
+
+  const playback = video.play()
+  playback?.catch?.(() => {})
+
+  if (typeof video.webkitEnterFullscreen === 'function') {
+    try {
+      video.webkitEnterFullscreen()
+    } catch {
+      video.addEventListener('loadedmetadata', () => {
+        try {
+          video.webkitEnterFullscreen()
+        } catch {
+          // Playback itself opens the native player when playsinline is disabled.
+        }
+      }, { once: true })
+    }
+  } else {
+    const requestFullscreen = video.requestFullscreen || video.webkitRequestFullscreen
+    try {
+      requestFullscreen?.call(video)?.catch?.(() => {})
+    } catch {
+      // The browser can still present its regular full-screen video controls.
+    }
+  }
+
+  video.addEventListener('webkitendfullscreen', () => video.pause(), { once: true })
+  video.addEventListener('ended', () => video.pause(), { once: true })
+}
+
 function createVimeoPoster(item, media) {
   const poster = document.createElement('div')
+  const nativeVideo = item.mobileVideo ? document.createElement('video') : null
   const image = document.createElement('img')
   const shade = document.createElement('span')
   const button = document.createElement('button')
@@ -620,9 +655,22 @@ function createVimeoPoster(item, media) {
   icon.src = MOBILE_SHOWREEL_PLAY_ICON
   icon.alt = ''
   button.append(icon)
+
+  if (nativeVideo) {
+    nativeVideo.className = 'showreel-native-video'
+    nativeVideo.src = item.mobileVideo
+    nativeVideo.preload = 'metadata'
+    nativeVideo.controls = true
+    nativeVideo.playsInline = false
+    poster.append(nativeVideo)
+  }
+
   poster.append(image, shade, button)
 
-  button.addEventListener('click', () => openMobileVimeo(item))
+  button.addEventListener('click', () => {
+    if (nativeVideo) openNativeVideo(nativeVideo)
+    else openMobileVimeo(item)
+  })
 
   return poster
 }
