@@ -451,6 +451,13 @@ function navigateToPage(page) {
   renderPage(page)
 }
 
+function clearMobileActionState() {
+  if (!window.matchMedia('(max-width: 1023px)').matches) return
+
+  const activeElement = document.activeElement
+  if (activeElement instanceof HTMLElement) activeElement.blur()
+}
+
 function openContacts() {
   if (!contactDialog || contactDialog.open) return
 
@@ -634,11 +641,17 @@ document.querySelectorAll('.site-header button, .site-header a').forEach((item) 
 })
 
 document.querySelectorAll('[data-page-target]').forEach((button) => {
-  button.addEventListener('click', () => navigateToPage(button.dataset.pageTarget))
+  button.addEventListener('click', () => {
+    navigateToPage(button.dataset.pageTarget)
+    requestAnimationFrame(clearMobileActionState)
+  })
 })
 
 document.querySelectorAll('[data-contact]').forEach((button) => {
-  button.addEventListener('click', openContacts)
+  button.addEventListener('click', () => {
+    openContacts()
+    requestAnimationFrame(clearMobileActionState)
+  })
 })
 
 contactDialogClose?.addEventListener('click', () => closeContacts())
@@ -754,7 +767,10 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('popstate', () => {
   closeContacts({ restoreHistory: false })
   renderPage(window.location.hash === '#showreel' ? 'showreel' : 'home')
+  requestAnimationFrame(clearMobileActionState)
 })
+
+window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActionState))
 
 window.addEventListener('pagehide', () => pauseAllShowreelMedia())
 document.addEventListener('visibilitychange', () => {

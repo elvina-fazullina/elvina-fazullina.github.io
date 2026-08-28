@@ -640,10 +640,10 @@ button { font: inherit; }
   .outline-button:active,
   .outline-button:focus,
   .outline-button:focus-visible {
-    outline: none;
-    background: transparent;
-    box-shadow: none;
-    color: #fff;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #fff !important;
   }
 
   .showreel {
