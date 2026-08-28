@@ -566,7 +566,7 @@ button { font: inherit; }
   }
 
   .hero__portrait {
-    top: calc(24.1026% - 16px);
+    top: calc(24.1026% - 40px);
     left: 0;
     width: 100%;
     aspect-ratio: 390 / 592;
@@ -583,7 +583,7 @@ button { font: inherit; }
 
   html.is-ios-chrome .hero__portrait,
   html.is-ios-yandex .hero__portrait {
-    top: calc(24.1026% - 32px);
+    top: calc(24.1026% - 56px);
   }
 
   html.is-ios-chrome .hero__title-wrap,
