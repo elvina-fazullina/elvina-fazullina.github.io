@@ -566,7 +566,7 @@ button { font: inherit; }
   }
 
   .hero__portrait {
-    top: 24.1026%;
+    top: calc(24.1026% - 16px);
     left: 0;
     width: 100%;
     aspect-ratio: 390 / 592;
