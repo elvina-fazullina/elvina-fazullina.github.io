@@ -12,6 +12,7 @@ const SHOWREELS = [
     title: 'Корпоративы',
     vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
     mobilePoster: 'showreel-corporate-poster.png',
+    mobileVideo: 'showreel-corporate.mp4',
   },
   {
     title: 'Дни рождения',
