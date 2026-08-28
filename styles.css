@@ -633,6 +633,17 @@ button { font: inherit; }
     padding: calc(var(--stage-width) * 23 / 390) calc(var(--stage-width) * 36 / 390);
     font-size: calc(var(--stage-width) * 24 / 390);
     line-height: calc(var(--stage-width) * 28 / 390);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .outline-button:hover,
+  .outline-button:active,
+  .outline-button:focus,
+  .outline-button:focus-visible {
+    outline: none;
+    background: transparent;
+    box-shadow: none;
+    color: #fff;
   }
 
   .showreel {
