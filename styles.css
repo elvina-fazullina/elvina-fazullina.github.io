@@ -581,6 +581,16 @@ button { font: inherit; }
     padding: 0;
   }
 
+  html.is-ios-chrome .hero__portrait,
+  html.is-ios-yandex .hero__portrait {
+    top: calc(24.1026% - 32px);
+  }
+
+  html.is-ios-chrome .hero__title-wrap,
+  html.is-ios-yandex .hero__title-wrap {
+    transform: translateY(-16px);
+  }
+
   .hero__title {
     font-size: calc(var(--stage-width) * 150 / 390);
     line-height: 0.8;
