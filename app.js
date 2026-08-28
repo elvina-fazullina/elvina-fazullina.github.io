@@ -608,6 +608,30 @@ function openNativeVideo(video) {
   video.currentTime = 0
   video.muted = false
 
+  const restorePoster = () => {
+    video.pause()
+    video.currentTime = 0
+    video.load()
+    video.closest('.showreel-poster')?.querySelector('.showreel-poster__play')?.blur()
+    document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  }
+
+  const handleFullscreenChange = () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement
+    if (fullscreenElement === video) {
+      video.dataset.nativeFullscreen = 'true'
+      return
+    }
+    if (video.dataset.nativeFullscreen === 'true') {
+      delete video.dataset.nativeFullscreen
+      restorePoster()
+    }
+  }
+
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+
   const playback = video.play()
   playback?.catch?.(() => {})
 
@@ -632,8 +656,8 @@ function openNativeVideo(video) {
     }
   }
 
-  video.addEventListener('webkitendfullscreen', () => video.pause(), { once: true })
-  video.addEventListener('ended', () => video.pause(), { once: true })
+  video.addEventListener('webkitendfullscreen', restorePoster, { once: true })
+  video.addEventListener('ended', restorePoster, { once: true })
 }
 
 function createVimeoPoster(item, media) {
@@ -642,7 +666,6 @@ function createVimeoPoster(item, media) {
   const image = document.createElement('img')
   const shade = document.createElement('span')
   const button = document.createElement('button')
-  const icon = document.createElement('img')
 
   poster.className = 'showreel-poster'
   image.className = 'showreel-poster__image'
@@ -652,9 +675,6 @@ function createVimeoPoster(item, media) {
   button.setAttribute('aria-label', `Смотреть на весь экран: ${item.title}`)
   image.src = item.mobilePoster
   image.alt = ''
-  icon.src = MOBILE_SHOWREEL_PLAY_ICON
-  icon.alt = ''
-  button.append(icon)
 
   if (nativeVideo) {
     nativeVideo.className = 'showreel-native-video'

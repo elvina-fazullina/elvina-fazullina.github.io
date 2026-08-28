@@ -434,15 +434,22 @@ button { font: inherit; }
   border: 0;
   border-radius: 50%;
   padding: 0;
-  background: transparent;
+  background: var(--yellow);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.showreel-poster__play img {
-  display: block;
-  width: 80px;
-  height: 80px;
+.showreel-poster__play::after {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-top: 14px solid transparent;
+  border-bottom: 14px solid transparent;
+  border-left: 23px solid #000;
+  content: '';
+  transform: translate(-39%, -50%);
 }
 
 .showreel-native-video {
