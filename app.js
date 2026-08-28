@@ -4,15 +4,19 @@ const SOCIAL_LINKS = {
   phone: 'tel:+79869119192',
 }
 
+const MOBILE_SHOWREEL_PLAY_ICON = 'showreel-play-button.png'
+
 const SHOWREELS = [
   { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
   {
     title: 'Корпоративы',
     vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
+    mobilePoster: 'showreel-corporate-poster.png',
   },
   {
     title: 'Дни рождения',
     vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
+    mobilePoster: 'showreel-birthday-poster.png',
   },
 ]
 
@@ -509,8 +513,59 @@ function renderPoster(item, media) {
   media.style.backgroundSize = 'contain'
 }
 
+function createVimeoIframe(item, { autoplay = false, fullscreenOnPlay = false } = {}) {
+  const iframe = document.createElement('iframe')
+  const url = new URL(item.vimeo)
+
+  if (autoplay) url.searchParams.set('autoplay', '1')
+  if (fullscreenOnPlay) url.searchParams.set('playsinline', '0')
+
+  iframe.src = url.toString()
+  iframe.title = `Vimeo: ${item.title}`
+  iframe.allow = 'autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share'
+  iframe.referrerPolicy = 'strict-origin-when-cross-origin'
+  iframe.allowFullscreen = true
+  iframe.loading = 'lazy'
+  return iframe
+}
+
+function createVimeoPoster(item, media) {
+  const poster = document.createElement('div')
+  const image = document.createElement('img')
+  const shade = document.createElement('span')
+  const button = document.createElement('button')
+  const icon = document.createElement('img')
+
+  poster.className = 'showreel-poster'
+  image.className = 'showreel-poster__image'
+  shade.className = 'showreel-poster__shade'
+  button.className = 'showreel-poster__play'
+  button.type = 'button'
+  button.setAttribute('aria-label', `Смотреть на весь экран: ${item.title}`)
+  image.src = item.mobilePoster
+  image.alt = ''
+  icon.src = MOBILE_SHOWREEL_PLAY_ICON
+  icon.alt = ''
+  button.append(icon)
+  poster.append(image, shade, button)
+
+  button.addEventListener('click', () => {
+    const iframe = createVimeoIframe(item, { autoplay: true, fullscreenOnPlay: true })
+    media.classList.add('showreel-card__media--vimeo')
+    media.replaceChildren(iframe)
+  })
+
+  return poster
+}
+
 function renderShowreelMedia(item, media) {
-  media.classList.toggle('showreel-card__media--vimeo', Boolean(item.vimeo))
+  const useMobilePoster = Boolean(
+    item.vimeo &&
+    item.mobilePoster &&
+    media.closest('.showreel__mobile')
+  )
+
+  media.classList.toggle('showreel-card__media--vimeo', Boolean(item.vimeo) && !useMobilePoster)
   media.classList.toggle('showreel-card__media--placeholder', Boolean(item.placeholder))
 
   if (item.placeholder) {
@@ -527,16 +582,11 @@ function renderShowreelMedia(item, media) {
   media.removeAttribute('aria-label')
 
   if (item.vimeo) {
-    const iframe = document.createElement('iframe')
-    iframe.src = item.vimeo
-    iframe.title = `Vimeo: ${item.title}`
-    iframe.allow = 'autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share'
-    iframe.referrerPolicy = 'strict-origin-when-cross-origin'
-    iframe.allowFullscreen = true
-    iframe.loading = 'lazy'
     media.style.backgroundColor = '#000'
     media.style.backgroundImage = 'none'
-    media.replaceChildren(iframe)
+    media.replaceChildren(
+      useMobilePoster ? createVimeoPoster(item, media) : createVimeoIframe(item),
+    )
     return
   }
 
