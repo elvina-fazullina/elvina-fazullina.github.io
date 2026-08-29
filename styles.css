@@ -855,7 +855,7 @@ button { font: inherit; }
 
 @keyframes mobile-scroll-hint {
   0%, 12%, 100% { transform: translateY(0); }
-  48% { transform: translateY(-90px); }
+  48% { transform: translateY(-110px); }
 }
 
 @keyframes pull-refresh-spin {
