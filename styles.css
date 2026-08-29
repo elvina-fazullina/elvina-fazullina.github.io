@@ -818,6 +818,7 @@ button { font: inherit; }
 
   .hero__stage {
     --stage-width: 100vw;
+    --mobile-hero-lift: 64px;
 
     top: 0;
     left: 50%;
@@ -827,7 +828,7 @@ button { font: inherit; }
   }
 
   .hero__portrait {
-    top: calc(24.1026% - 40px);
+    top: calc(24.1026% - 40px - var(--mobile-hero-lift));
     left: 0;
     width: 100%;
     aspect-ratio: 390 / 592;
@@ -844,7 +845,7 @@ button { font: inherit; }
 
   html.is-ios-chrome .hero__portrait,
   html.is-ios-yandex .hero__portrait {
-    top: calc(24.1026% - 56px);
+    top: calc(24.1026% - 56px - var(--mobile-hero-lift));
   }
 
   html.is-ios-chrome .hero__title-wrap,
@@ -883,7 +884,7 @@ button { font: inherit; }
     left: 50%;
     display: flex;
     width: 53.3333%;
-    transform: translateX(-50%);
+    transform: translate(-50%, calc(-1 * var(--mobile-hero-lift)));
     flex-direction: column;
     gap: calc(var(--stage-width) * 12 / 390);
   }
