@@ -22,7 +22,7 @@ const SHOWREELS = [
   },
 ]
 
-const MOBILE_SCROLL_HINT_DELAY = 5_000
+const MOBILE_SCROLL_HINT_DELAY = 3_000
 const DESKTOP_SCROLL_HINT_DELAY = 5_000
 const DESKTOP_SWIPE_THRESHOLD = 72
 const DESKTOP_SWIPE_MAX_OFFSET = 120
@@ -46,7 +46,6 @@ const showreelPage = document.querySelector('#showreel')
 const pullRefresh = document.querySelector('#pull-refresh')
 let activeShowreel = Math.max(0, SHOWREELS.findIndex((item) => item.vimeo || item.video))
 let mobileScrollHintTimer
-let mobileScrollHintReturnTimer
 let mobileScrollHintFinishTimer
 let mobileFeedInteracted = false
 let mobileScrollHintPlayed = false
@@ -248,7 +247,6 @@ function resetMobileFeed() {
 
 function cancelMobileScrollHint() {
   window.clearTimeout(mobileScrollHintTimer)
-  window.clearTimeout(mobileScrollHintReturnTimer)
   window.clearTimeout(mobileScrollHintFinishTimer)
   mobileScrollHintAnimating = false
   mobileFeed.classList.remove('is-scroll-hinting')
@@ -284,16 +282,11 @@ function scheduleMobileScrollHint() {
     mobileScrollHintPlayed = true
     mobileScrollHintAnimating = true
     mobileFeed.classList.add('is-scroll-hinting')
-    mobileFeed.scrollTo({ top: 180, behavior: 'smooth' })
-
-    mobileScrollHintReturnTimer = window.setTimeout(() => {
-      mobileFeed.scrollTo({ top: 0, behavior: 'smooth' })
-    }, 750)
 
     mobileScrollHintFinishTimer = window.setTimeout(() => {
       mobileScrollHintAnimating = false
       mobileFeed.classList.remove('is-scroll-hinting')
-    }, 1550)
+    }, 720)
   }, MOBILE_SCROLL_HINT_DELAY)
 }
 

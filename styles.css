@@ -801,6 +801,11 @@ button { font: inherit; }
 
   .showreel__mobile-feed.is-scroll-hinting { scroll-snap-type: none; }
 
+  .showreel__mobile-feed.is-scroll-hinting .showreel-card {
+    animation: mobile-scroll-hint 680ms cubic-bezier(0.33, 1, 0.68, 1);
+    will-change: transform;
+  }
+
   .showreel-card {
     position: relative;
     display: flex;
@@ -846,6 +851,11 @@ button { font: inherit; }
     line-height: 28px;
   }
 
+}
+
+@keyframes mobile-scroll-hint {
+  0%, 12%, 100% { transform: translateY(0); }
+  48% { transform: translateY(-72px); }
 }
 
 @keyframes pull-refresh-spin {
