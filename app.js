@@ -812,9 +812,9 @@ function animateMobileGalleryTo(targetPosition) {
   mobileGallerySnapFrame = requestAnimationFrame(update)
 }
 
-function navigateMobileGallery(direction) {
+function navigateMobileGallery(direction, { sound = true } = {}) {
   if (!direction) return
-  playHapticSound()
+  if (sound) playHapticSound()
   animateMobileGalleryTo(Math.round(galleryScrollPosition) + direction)
 }
 
@@ -861,7 +861,6 @@ function finishMobileGalleryDrag(event) {
   mobileGalleryPointerId = null
   mobileGallerySuppressClick = mobileGalleryDidDrag
   mobileGalleryDidDrag = false
-  if (direction) playHapticSound()
   animateMobileGalleryTo(targetPosition)
 
   if (mobileGallerySuppressClick) {
@@ -882,7 +881,7 @@ function handleMobileGalleryWheel(event) {
   const now = performance.now()
   if (now < mobileGalleryWheelLockedUntil) return
   mobileGalleryWheelLockedUntil = now + MOBILE_GALLERY_SNAP_DURATION
-  navigateMobileGallery(Math.sign(event.deltaY))
+  navigateMobileGallery(Math.sign(event.deltaY), { sound: false })
 }
 
 function navigateGalleryFromTap(event) {
