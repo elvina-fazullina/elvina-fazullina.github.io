@@ -646,7 +646,7 @@ function updateGalleryScrollHeight() {
   galleryPage.style.setProperty('--gallery-scroll-distance', `${scrollDistance}px`)
 }
 
-function setGalleryScrollPositionInstantly(top) {
+function setPageScrollPositionInstantly(top) {
   const root = document.documentElement
   const previousRootScrollBehavior = root.style.scrollBehavior
   const previousBodyScrollBehavior = document.body.style.scrollBehavior
@@ -658,6 +658,33 @@ function setGalleryScrollPositionInstantly(top) {
   window.scrollTo({ top, left: 0, behavior: 'auto' })
   root.style.scrollBehavior = previousRootScrollBehavior
   document.body.style.scrollBehavior = previousBodyScrollBehavior
+}
+
+function getGalleryScrollTop() {
+  return window.matchMedia('(max-width: 1023px)').matches
+    ? galleryViewport.scrollTop
+    : window.scrollY
+}
+
+function setGalleryScrollPositionInstantly(top) {
+  if (!window.matchMedia('(max-width: 1023px)').matches) {
+    setPageScrollPositionInstantly(top)
+    return
+  }
+
+  const previousScrollBehavior = galleryViewport.style.scrollBehavior
+  galleryViewport.style.scrollBehavior = 'auto'
+  galleryViewport.scrollTop = top
+  galleryViewport.style.scrollBehavior = previousScrollBehavior
+}
+
+function scrollGalleryTo(top, behavior = 'auto') {
+  if (window.matchMedia('(max-width: 1023px)').matches) {
+    galleryViewport.scrollTo({ top, left: 0, behavior })
+    return
+  }
+
+  window.scrollTo({ top, left: 0, behavior })
 }
 
 function renderGallery({ announce = false } = {}) {
@@ -718,7 +745,7 @@ function syncGalleryToPageScroll() {
   galleryScrollFrame = undefined
   if (document.body.dataset.page !== 'gallery') return
   const step = getGalleryScrollStep()
-  const rawPosition = step > 0 ? window.scrollY / step : 0
+  const rawPosition = step > 0 ? getGalleryScrollTop() / step : 0
   const isMobile = window.matchMedia('(max-width: 1023px)').matches
   galleryScrollTarget = rawPosition
   const progressDelta = galleryScrollTarget - galleryScrollPosition
@@ -771,15 +798,16 @@ function navigateGalleryFromTap(event) {
 
   if (nextIndex === currentIndex) return
   playHapticSound()
-  const nextScrollPosition = Math.round(window.scrollY / getGalleryScrollStep()) + direction
-  window.scrollTo({ top: nextScrollPosition * getGalleryScrollStep(), behavior: 'smooth' })
+  const nextScrollPosition = Math.round(getGalleryScrollTop() / getGalleryScrollStep()) + direction
+  scrollGalleryTo(nextScrollPosition * getGalleryScrollStep(), 'smooth')
 }
 
 function renderPage(page) {
   const isShowreel = page === 'showreel'
   const isGallery = page === 'gallery'
 
-  setGalleryScrollPositionInstantly(0)
+  setPageScrollPositionInstantly(0)
+  if (!isGallery) setGalleryScrollPositionInstantly(0)
   resetPullRefresh()
 
   if (!isShowreel) {
@@ -796,7 +824,7 @@ function renderPage(page) {
     item.setAttribute('aria-current', isCurrent ? 'page' : 'false')
   })
   if (!isGallery) {
-    requestAnimationFrame(() => setGalleryScrollPositionInstantly(0))
+    requestAnimationFrame(() => setPageScrollPositionInstantly(0))
   }
 
   if (isShowreel && window.matchMedia('(max-width: 1023px)').matches) {
@@ -1340,6 +1368,7 @@ window.addEventListener('popstate', () => {
 
 window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActionState))
 window.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true })
+galleryViewport?.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true })
 window.addEventListener('resize', () => {
   if (document.body.dataset.page !== 'gallery') return
   galleryImagesInitialized = false
