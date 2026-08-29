@@ -628,6 +628,13 @@ function updateGalleryScrollHeight() {
   galleryPage.style.setProperty('--gallery-scroll-distance', `${scrollDistance}px`)
 }
 
+function setGalleryScrollPositionInstantly(top) {
+  const previousScrollBehavior = document.documentElement.style.scrollBehavior
+  document.documentElement.style.scrollBehavior = 'auto'
+  window.scrollTo(0, top)
+  document.documentElement.style.scrollBehavior = previousScrollBehavior
+}
+
 function renderGallery({ announce = false } = {}) {
   if (!galleryViewport || !galleryCards.length) return
 
@@ -694,7 +701,7 @@ function syncGalleryToPageScroll() {
       const resetPosition = (
         DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
       ) * step
-      window.scrollTo(0, resetPosition)
+      setGalleryScrollPositionInstantly(resetPosition)
     }
   }
 }
@@ -772,7 +779,7 @@ function renderPage(page) {
       const initialScrollPosition = isMobileGallery
         ? galleryScrollPosition
         : DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
-      window.scrollTo(0, initialScrollPosition * getGalleryScrollStep())
+      setGalleryScrollPositionInstantly(initialScrollPosition * getGalleryScrollStep())
       renderGallery()
     })
   }
@@ -1289,7 +1296,7 @@ window.addEventListener('resize', () => {
   const nextScrollPosition = isMobileGallery
     ? galleryScrollPosition
     : DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
-  window.scrollTo(0, nextScrollPosition * getGalleryScrollStep())
+  setGalleryScrollPositionInstantly(nextScrollPosition * getGalleryScrollStep())
   renderGallery()
 })
 
