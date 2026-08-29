@@ -871,13 +871,13 @@ button { font: inherit; }
     position: absolute;
     z-index: 3;
     top: auto;
-    bottom: calc(24px + (100vw * 28 / 390) + 40px);
+    bottom: calc(24px + (100vw * 28 / 390) + 32px);
     left: 50%;
     display: flex;
     width: calc(100vw * 208 / 390);
     transform: translateX(-50%);
     flex-direction: column;
-    gap: calc(var(--stage-width) * 12 / 390);
+    gap: 12px;
   }
 
   .hero__contacts {

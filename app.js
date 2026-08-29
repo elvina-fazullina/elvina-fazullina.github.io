@@ -1097,6 +1097,7 @@ document.querySelectorAll('.site-header button, .site-header a').forEach((item) 
 
 document.querySelectorAll('[data-page-target]').forEach((button) => {
   button.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 1023px)').matches) playHapticSound()
     navigateToPage(button.dataset.pageTarget)
     requestAnimationFrame(clearMobileActionState)
   })
