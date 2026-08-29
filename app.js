@@ -639,10 +639,17 @@ function updateGalleryScrollHeight() {
 }
 
 function setGalleryScrollPositionInstantly(top) {
-  const previousScrollBehavior = document.documentElement.style.scrollBehavior
-  document.documentElement.style.scrollBehavior = 'auto'
-  window.scrollTo(0, top)
-  document.documentElement.style.scrollBehavior = previousScrollBehavior
+  const root = document.documentElement
+  const previousRootScrollBehavior = root.style.scrollBehavior
+  const previousBodyScrollBehavior = document.body.style.scrollBehavior
+
+  root.style.scrollBehavior = 'auto'
+  document.body.style.scrollBehavior = 'auto'
+  root.scrollTop = top
+  document.body.scrollTop = top
+  window.scrollTo({ top, left: 0, behavior: 'auto' })
+  root.style.scrollBehavior = previousRootScrollBehavior
+  document.body.style.scrollBehavior = previousBodyScrollBehavior
 }
 
 function renderGallery({ announce = false } = {}) {
@@ -744,6 +751,9 @@ function renderPage(page) {
   const isShowreel = page === 'showreel'
   const isGallery = page === 'gallery'
 
+  setGalleryScrollPositionInstantly(0)
+  resetPullRefresh()
+
   if (!isShowreel) {
     pauseAllShowreelMedia()
     closeMobileVimeo()
@@ -757,7 +767,9 @@ function renderPage(page) {
     const isCurrent = item.dataset.pageTarget === document.body.dataset.page
     item.setAttribute('aria-current', isCurrent ? 'page' : 'false')
   })
-  window.scrollTo(0, 0)
+  if (!isGallery) {
+    requestAnimationFrame(() => setGalleryScrollPositionInstantly(0))
+  }
 
   if (isShowreel && window.matchMedia('(max-width: 1023px)').matches) {
     cancelDesktopScrollHint()
