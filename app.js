@@ -493,13 +493,53 @@ function finishDesktopSwipe(event, allowSwitch = true) {
   if (nextIndex !== activeShowreel) switchDesktopShowreel(nextIndex)
 }
 
-function getGalleryOffset(index) {
+function getGalleryOffset(index, activeIndex = activeGalleryImage) {
   const count = galleryCards.length
-  let offset = index - activeGalleryImage
+  let offset = index - activeIndex
 
   if (offset > count / 2) offset -= count
   if (offset < -count / 2) offset += count
   return offset
+}
+
+function getGalleryScale(distance) {
+  if (distance === 0) return 1
+  if (distance === 1) return 0.66
+  if (distance === 2) return 0.43
+  return 0.28
+}
+
+function createGalleryLayout(activeIndex) {
+  const count = galleryCards.length
+  const gap = window.matchMedia('(max-width: 1023px)').matches ? 12 : 20
+  const layout = galleryCards.map((card, index) => {
+    const distance = Math.abs(getGalleryOffset(index, activeIndex))
+    const scale = getGalleryScale(distance)
+    return {
+      x: 0,
+      scale,
+      opacity: distance <= 2 ? 1 : distance === 3 ? 0.58 : 0,
+      z: 20 - distance,
+      width: card.offsetWidth * scale,
+    }
+  })
+
+  for (const direction of [-1, 1]) {
+    let previousIndex = activeIndex
+    let previousX = 0
+
+    for (let distance = 1; distance <= Math.floor(count / 2); distance += 1) {
+      const index = (activeIndex + direction * distance + count) % count
+      const x = previousX + direction * (
+        layout[previousIndex].width / 2 + gap + layout[index].width / 2
+      )
+      layout[index].x = x
+      previousIndex = index
+      previousX = x
+    }
+  }
+
+  return layout
 }
 
 function loadNearbyGalleryImages() {
@@ -513,22 +553,29 @@ function loadNearbyGalleryImages() {
 function renderGallery({ announce = false } = {}) {
   if (!galleryViewport || !galleryCards.length) return
 
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches
-  const viewportWidth = galleryViewport.clientWidth || window.innerWidth
-  const step = isMobile
-    ? Math.min(viewportWidth * 0.7, 310)
-    : Math.min(viewportWidth * 0.225, 330)
+  const currentLayout = createGalleryLayout(activeGalleryImage)
+  const dragDirection = galleryDragOffset < 0 ? 1 : -1
+  const dragProgress = Math.min(1, Math.abs(galleryDragOffset) / 120)
+  const targetIndex = (
+    activeGalleryImage + dragDirection + galleryCards.length
+  ) % galleryCards.length
+  const targetLayout = galleryDragOffset === 0
+    ? currentLayout
+    : createGalleryLayout(targetIndex)
 
   galleryCards.forEach((card, index) => {
     const offset = getGalleryOffset(index)
     const distance = Math.abs(offset)
-    const scale = distance === 0 ? 1 : distance === 1 ? 0.66 : distance === 2 ? 0.43 : 0.28
-    const opacity = distance <= 2 ? 1 : distance === 3 ? 0.58 : 0
+    const current = currentLayout[index]
+    const target = targetLayout[index]
+    const x = current.x + (target.x - current.x) * dragProgress
+    const scale = current.scale + (target.scale - current.scale) * dragProgress
+    const opacity = current.opacity + (target.opacity - current.opacity) * dragProgress
 
-    card.style.setProperty('--gallery-x', `${offset * step + galleryDragOffset}px`)
+    card.style.setProperty('--gallery-x', `${x}px`)
     card.style.setProperty('--gallery-scale', String(scale))
     card.style.setProperty('--gallery-opacity', String(opacity))
-    card.style.setProperty('--gallery-z', String(20 - distance))
+    card.style.setProperty('--gallery-z', String(Math.max(current.z, target.z)))
     card.classList.toggle('is-active', distance === 0)
     card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
     card.tabIndex = distance === 0 ? 0 : -1
