@@ -203,7 +203,8 @@ button { font: inherit; }
   text-transform: uppercase;
 }
 
-.hero__actions { display: none; }
+.hero__actions,
+.hero__contacts { display: none; }
 
 .outline-button {
   display: inline-flex;
@@ -881,19 +882,44 @@ button { font: inherit; }
   .hero__actions {
     position: absolute;
     z-index: 3;
-    top: min(
-      68.7179%,
-      calc(
-        100svh - max(env(safe-area-inset-bottom), 16px) -
-        (var(--stage-width) * 164 / 390)
-      )
-    );
+    top: calc(var(--stage-width) * 466 / 390);
     left: 50%;
     display: flex;
     width: 53.3333%;
-    transform: translate(-50%, calc(-1 * var(--mobile-hero-lift)));
+    transform: translateX(-50%);
     flex-direction: column;
     gap: calc(var(--stage-width) * 12 / 390);
+  }
+
+  .hero__contacts {
+    position: absolute;
+    z-index: 4;
+    bottom: max(40px, env(safe-area-inset-bottom));
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(100vw * 48 / 390);
+    transform: translateX(-50%);
+    font-size: calc(100vw * 16 / 390);
+    font-weight: 500;
+    line-height: calc(100vw * 28 / 390);
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .hero__contacts a {
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .hero__contacts a:hover,
+  .hero__contacts a:active,
+  .hero__contacts a:focus,
+  .hero__contacts a:focus-visible {
+    outline: none;
+    color: #fff;
   }
 
   .outline-button {
