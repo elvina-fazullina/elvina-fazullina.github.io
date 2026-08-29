@@ -30,6 +30,9 @@ const PULL_REFRESH_THRESHOLD = 88
 const PULL_REFRESH_MAX_DISTANCE = 112
 const GALLERY_LOOP_CYCLES = 21
 const GALLERY_CENTER_CYCLE = Math.floor(GALLERY_LOOP_CYCLES / 2)
+const MOBILE_GALLERY_SCROLL_STEP = 0.72
+const MOBILE_GALLERY_SCROLL_EASING = 0.16
+const MOBILE_GALLERY_SETTLE_THRESHOLD = 0.001
 
 const contactDialog = document.querySelector('#contacts')
 const contactDialogClose = document.querySelector('.contact-dialog__close')
@@ -79,6 +82,7 @@ let pullRefreshActive = false
 let activeVimeoOverlay = null
 let activeGalleryImage = 4
 let galleryScrollPosition = 4
+let galleryScrollTarget = 4
 let galleryScrollFrame
 let galleryCardWidths = []
 let galleryCardHeights = []
@@ -628,7 +632,11 @@ function loadNearbyGalleryImages() {
 }
 
 function getGalleryScrollStep() {
-  return window.innerHeight * (window.matchMedia('(max-width: 1023px)').matches ? 0.32 : 0.55)
+  return window.innerHeight * (
+    window.matchMedia('(max-width: 1023px)').matches
+      ? MOBILE_GALLERY_SCROLL_STEP
+      : 0.55
+  )
 }
 
 function updateGalleryScrollHeight() {
@@ -711,7 +719,17 @@ function syncGalleryToPageScroll() {
   if (document.body.dataset.page !== 'gallery') return
   const step = getGalleryScrollStep()
   const rawPosition = step > 0 ? window.scrollY / step : 0
-  galleryScrollPosition = normalizeGalleryIndex(rawPosition)
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches
+  galleryScrollTarget = rawPosition
+  const progressDelta = galleryScrollTarget - galleryScrollPosition
+
+  if (isMobile && Math.abs(progressDelta) > MOBILE_GALLERY_SETTLE_THRESHOLD) {
+    galleryScrollPosition = normalizeGalleryIndex(
+      galleryScrollPosition + progressDelta * MOBILE_GALLERY_SCROLL_EASING,
+    )
+  } else {
+    galleryScrollPosition = galleryScrollTarget
+  }
 
   renderGallery()
 
@@ -719,9 +737,19 @@ function syncGalleryToPageScroll() {
   const upperResetPoint = galleryCards.length * (GALLERY_LOOP_CYCLES - 2)
   if (rawPosition < lowerResetPoint || rawPosition > upperResetPoint) {
     const resetPosition = (
-      GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
-    ) * step
-    setGalleryScrollPositionInstantly(resetPosition)
+      GALLERY_CENTER_CYCLE * galleryCards.length + normalizeGalleryIndex(rawPosition)
+    )
+    const cycleShift = resetPosition - rawPosition
+    galleryScrollPosition += cycleShift
+    galleryScrollTarget += cycleShift
+    setGalleryScrollPositionInstantly(resetPosition * step)
+  }
+
+  if (
+    isMobile &&
+    Math.abs(galleryScrollTarget - galleryScrollPosition) > MOBILE_GALLERY_SETTLE_THRESHOLD
+  ) {
+    galleryScrollFrame = requestAnimationFrame(syncGalleryToPageScroll)
   }
 }
 
@@ -793,6 +821,7 @@ function renderPage(page) {
     requestAnimationFrame(() => {
       activeGalleryImage = 4
       galleryScrollPosition = activeGalleryImage
+      galleryScrollTarget = galleryScrollPosition
       galleryImagesInitialized = false
       galleryCardStateInitialized = false
       updateGalleryScrollHeight()
@@ -800,6 +829,8 @@ function renderPage(page) {
       const initialScrollPosition = (
         GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
       )
+      galleryScrollPosition = initialScrollPosition
+      galleryScrollTarget = initialScrollPosition
       setGalleryScrollPositionInstantly(initialScrollPosition * getGalleryScrollStep())
       renderGallery()
     })
@@ -1314,7 +1345,11 @@ window.addEventListener('resize', () => {
   galleryImagesInitialized = false
   updateGalleryScrollHeight()
   measureGalleryCards()
-  const nextScrollPosition = GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
+  const nextScrollPosition = (
+    GALLERY_CENTER_CYCLE * galleryCards.length + normalizeGalleryIndex(galleryScrollPosition)
+  )
+  galleryScrollPosition = nextScrollPosition
+  galleryScrollTarget = nextScrollPosition
   setGalleryScrollPositionInstantly(nextScrollPosition * getGalleryScrollStep())
   renderGallery()
 })
