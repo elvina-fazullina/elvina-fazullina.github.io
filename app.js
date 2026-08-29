@@ -75,10 +75,8 @@ let pullRefreshTracking = false
 let pullRefreshActive = false
 let activeVimeoOverlay = null
 let activeGalleryImage = 3
-let galleryPointerId = null
-let galleryPointerStartX = 0
-let galleryPointerStartY = 0
-let galleryDragOffset = 0
+let galleryScrollPosition = 3
+let galleryScrollFrame
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -548,27 +546,36 @@ function loadNearbyGalleryImages() {
   })
 }
 
+function getGalleryScrollStep() {
+  return window.innerHeight * (window.matchMedia('(max-width: 1023px)').matches ? 0.48 : 0.55)
+}
+
+function updateGalleryScrollHeight() {
+  if (!galleryPage) return
+  const scrollDistance = getGalleryScrollStep() * Math.max(0, galleryCards.length - 1)
+  galleryPage.style.setProperty('--gallery-scroll-distance', `${scrollDistance}px`)
+}
+
 function renderGallery({ announce = false } = {}) {
   if (!galleryViewport || !galleryCards.length) return
 
-  const currentLayout = createGalleryLayout(activeGalleryImage)
-  const dragDirection = galleryDragOffset < 0 ? 1 : -1
-  const dragProgress = Math.min(1, Math.abs(galleryDragOffset) / 120)
-  const targetIndex = (
-    activeGalleryImage + dragDirection + galleryCards.length
-  ) % galleryCards.length
-  const targetLayout = galleryDragOffset === 0
-    ? currentLayout
-    : createGalleryLayout(targetIndex)
+  const lowerIndex = Math.floor(galleryScrollPosition)
+  const upperIndex = Math.min(galleryCards.length - 1, lowerIndex + 1)
+  const progress = galleryScrollPosition - lowerIndex
+  const currentLayout = createGalleryLayout(lowerIndex)
+  const targetLayout = createGalleryLayout(upperIndex)
+  const nextActiveImage = Math.round(galleryScrollPosition)
+  const activeChanged = nextActiveImage !== activeGalleryImage
+  activeGalleryImage = nextActiveImage
 
   galleryCards.forEach((card, index) => {
     const offset = getGalleryOffset(index)
     const distance = Math.abs(offset)
     const current = currentLayout[index]
     const target = targetLayout[index]
-    const x = current.x + (target.x - current.x) * dragProgress
-    const scale = current.scale + (target.scale - current.scale) * dragProgress
-    const opacity = current.opacity + (target.opacity - current.opacity) * dragProgress
+    const x = current.x + (target.x - current.x) * progress
+    const scale = current.scale + (target.scale - current.scale) * progress
+    const opacity = current.opacity + (target.opacity - current.opacity) * progress
 
     card.style.setProperty('--gallery-x', `${x}px`)
     card.style.setProperty('--gallery-scale', String(scale))
@@ -580,55 +587,30 @@ function renderGallery({ announce = false } = {}) {
   })
 
   loadNearbyGalleryImages()
-  if (announce && galleryStatus) {
+  if ((announce || activeChanged) && galleryStatus) {
     galleryStatus.textContent = `Фотография ${activeGalleryImage + 1} из ${galleryCards.length}`
   }
 }
 
-function selectGalleryImage(index, { announce = true } = {}) {
-  const count = galleryCards.length
-  if (!count) return
-  activeGalleryImage = ((index % count) + count) % count
-  galleryDragOffset = 0
-  renderGallery({ announce })
-}
-
-function startGalleryDrag(event) {
-  if (event.button !== 0 && event.pointerType === 'mouse') return
-  galleryPointerId = event.pointerId
-  galleryPointerStartX = event.clientX
-  galleryPointerStartY = event.clientY
-  galleryDragOffset = 0
-  galleryViewport.classList.add('is-dragging')
-  galleryViewport.setPointerCapture(event.pointerId)
-}
-
-function moveGalleryDrag(event) {
-  if (event.pointerId !== galleryPointerId) return
-  const deltaX = event.clientX - galleryPointerStartX
-  const deltaY = event.clientY - galleryPointerStartY
-  galleryDragOffset = Math.max(-120, Math.min(120, Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY))
-  galleryCards.forEach((card) => { card.style.transition = 'none' })
+function syncGalleryToPageScroll() {
+  galleryScrollFrame = undefined
+  if (document.body.dataset.page !== 'gallery') return
+  const step = getGalleryScrollStep()
+  galleryScrollPosition = Math.max(
+    0,
+    Math.min(galleryCards.length - 1, step > 0 ? window.scrollY / step : 0),
+  )
   renderGallery()
 }
 
-function finishGalleryDrag(event, allowChange = true) {
-  if (event.pointerId !== galleryPointerId) return
+function scheduleGalleryScrollRender() {
+  if (galleryScrollFrame !== undefined) return
+  galleryScrollFrame = requestAnimationFrame(syncGalleryToPageScroll)
+}
 
-  if (galleryViewport.hasPointerCapture(event.pointerId)) {
-    galleryViewport.releasePointerCapture(event.pointerId)
-  }
-  galleryViewport.classList.remove('is-dragging')
-  galleryCards.forEach((card) => { card.style.transition = '' })
-
-  const offset = galleryDragOffset
-  galleryPointerId = null
-  galleryDragOffset = 0
-  if (allowChange && Math.abs(offset) >= 44) {
-    selectGalleryImage(activeGalleryImage + (offset < 0 ? 1 : -1))
-  } else {
-    renderGallery()
-  }
+function advanceGalleryFromTap() {
+  const nextIndex = Math.min(galleryCards.length - 1, Math.floor(galleryScrollPosition + 1.001))
+  window.scrollTo({ top: nextIndex * getGalleryScrollStep(), behavior: 'smooth' })
 }
 
 function renderPage(page) {
@@ -668,7 +650,14 @@ function renderPage(page) {
     cancelDesktopScrollHint()
   }
 
-  if (isGallery) requestAnimationFrame(() => renderGallery())
+  if (isGallery) {
+    requestAnimationFrame(() => {
+      updateGalleryScrollHeight()
+      galleryScrollPosition = activeGalleryImage
+      window.scrollTo(0, galleryScrollPosition * getGalleryScrollStep())
+      renderGallery()
+    })
+  }
 }
 
 function navigateToPage(page) {
@@ -1037,10 +1026,7 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
   })
 })
 
-galleryViewport?.addEventListener('pointerdown', startGalleryDrag)
-galleryViewport?.addEventListener('pointermove', moveGalleryDrag)
-galleryViewport?.addEventListener('pointerup', (event) => finishGalleryDrag(event))
-galleryViewport?.addEventListener('pointercancel', (event) => finishGalleryDrag(event, false))
+galleryViewport?.addEventListener('click', advanceGalleryFromTap)
 
 document.querySelectorAll('[data-contact]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -1175,8 +1161,12 @@ window.addEventListener('popstate', () => {
 })
 
 window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActionState))
+window.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true })
 window.addEventListener('resize', () => {
-  if (document.body.dataset.page === 'gallery') renderGallery()
+  if (document.body.dataset.page !== 'gallery') return
+  updateGalleryScrollHeight()
+  window.scrollTo(0, galleryScrollPosition * getGalleryScrollStep())
+  renderGallery()
 })
 
 document.addEventListener('fullscreenchange', () => {
