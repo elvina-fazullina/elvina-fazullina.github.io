@@ -7,22 +7,22 @@ const SOCIAL_LINKS = {
 const MOBILE_SHOWREEL_PLAY_ICON = 'data:image/png;base64,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'
 
 const SHOWREELS = [
-  { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
-  {
-    title: 'Корпоративы',
-    vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
-    mobilePoster: 'showreel-corporate-poster.png',
-    mobileVideo: 'showreel-corporate.mp4',
-  },
   {
     title: 'Дни рождения',
     vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
     mobilePoster: 'showreel-birthday-poster.png',
     mobileVideo: 'showreel-birthday.mp4',
   },
+  {
+    title: 'Корпоративы',
+    vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
+    mobilePoster: 'showreel-corporate-poster.png',
+    mobileVideo: 'showreel-corporate.mp4',
+  },
+  { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
 ]
 
-const MOBILE_SCROLL_HINT_DELAY = 3_000
+const MOBILE_SCROLL_HINT_DELAY = 2_000
 const DESKTOP_SCROLL_HINT_DELAY = 5_000
 const DESKTOP_SWIPE_THRESHOLD = 72
 const DESKTOP_SWIPE_MAX_OFFSET = 120
@@ -286,7 +286,7 @@ function scheduleMobileScrollHint() {
     mobileScrollHintFinishTimer = window.setTimeout(() => {
       mobileScrollHintAnimating = false
       mobileFeed.classList.remove('is-scroll-hinting')
-    }, 720)
+    }, 540)
   }, MOBILE_SCROLL_HINT_DELAY)
 }
 
