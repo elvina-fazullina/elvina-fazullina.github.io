@@ -28,8 +28,8 @@ const DESKTOP_SWIPE_THRESHOLD = 72
 const DESKTOP_SWIPE_MAX_OFFSET = 120
 const PULL_REFRESH_THRESHOLD = 88
 const PULL_REFRESH_MAX_DISTANCE = 112
-const DESKTOP_GALLERY_LOOP_CYCLES = 21
-const DESKTOP_GALLERY_CENTER_CYCLE = Math.floor(DESKTOP_GALLERY_LOOP_CYCLES / 2)
+const GALLERY_LOOP_CYCLES = 21
+const GALLERY_CENTER_CYCLE = Math.floor(GALLERY_LOOP_CYCLES / 2)
 
 const contactDialog = document.querySelector('#contacts')
 const contactDialogClose = document.querySelector('.contact-dialog__close')
@@ -494,8 +494,6 @@ function finishDesktopSwipe(event, allowSwitch = true) {
 }
 
 function getGalleryOffset(index, activeIndex = activeGalleryImage) {
-  if (window.matchMedia('(max-width: 1023px)').matches) return index - activeIndex
-
   const count = galleryCards.length
   let offset = index - activeIndex
 
@@ -531,9 +529,10 @@ function getMobileGalleryScale(distance) {
 }
 
 function createMobileGalleryLayout(activeIndex) {
+  const count = galleryCards.length
   const gap = Math.max(18, Math.min(26, window.innerWidth * 0.064))
   const layout = galleryCards.map((card, index) => {
-    const distance = Math.abs(index - activeIndex)
+    const distance = Math.abs(getGalleryOffset(index, activeIndex))
     const scale = getMobileGalleryScale(distance)
     return {
       x: 0,
@@ -552,9 +551,8 @@ function createMobileGalleryLayout(activeIndex) {
   for (const direction of [-1, 1]) {
     let previousIndex = activeIndex
 
-    for (let distance = 1; distance < galleryCards.length; distance += 1) {
-      const index = activeIndex + direction * distance
-      if (index < 0 || index >= galleryCards.length) break
+    for (let distance = 1; distance <= Math.floor(count / 2); distance += 1) {
+      const index = (activeIndex + direction * distance + count) % count
 
       layout[index].y = layout[previousIndex].y + direction * (
         layout[previousIndex].height / 2 + gap + layout[index].height / 2
@@ -622,10 +620,7 @@ function getGalleryScrollStep() {
 
 function updateGalleryScrollHeight() {
   if (!galleryPage) return
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches
-  const scrollPositions = isMobile
-    ? Math.max(0, galleryCards.length - 1)
-    : galleryCards.length * DESKTOP_GALLERY_LOOP_CYCLES
+  const scrollPositions = galleryCards.length * GALLERY_LOOP_CYCLES
   const scrollDistance = getGalleryScrollStep() * scrollPositions
   galleryPage.style.setProperty('--gallery-scroll-distance', `${scrollDistance}px`)
 }
@@ -640,18 +635,13 @@ function setGalleryScrollPositionInstantly(top) {
 function renderGallery({ announce = false } = {}) {
   if (!galleryViewport || !galleryCards.length) return
 
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches
   const baseIndex = Math.floor(galleryScrollPosition)
-  const lowerIndex = isMobile ? baseIndex : normalizeGalleryIndex(baseIndex)
-  const upperIndex = isMobile
-    ? Math.min(galleryCards.length - 1, lowerIndex + 1)
-    : normalizeGalleryIndex(lowerIndex + 1)
+  const lowerIndex = normalizeGalleryIndex(baseIndex)
+  const upperIndex = normalizeGalleryIndex(lowerIndex + 1)
   const progress = galleryScrollPosition - baseIndex
   const currentLayout = createGalleryLayout(lowerIndex)
   const targetLayout = createGalleryLayout(upperIndex)
-  const nextActiveImage = isMobile
-    ? Math.round(galleryScrollPosition)
-    : normalizeGalleryIndex(Math.round(galleryScrollPosition))
+  const nextActiveImage = normalizeGalleryIndex(Math.round(galleryScrollPosition))
   const activeChanged = nextActiveImage !== activeGalleryImage
   activeGalleryImage = nextActiveImage
 
@@ -686,25 +676,17 @@ function syncGalleryToPageScroll() {
   if (document.body.dataset.page !== 'gallery') return
   const step = getGalleryScrollStep()
   const rawPosition = step > 0 ? window.scrollY / step : 0
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches
-
-  if (isMobile) {
-    galleryScrollPosition = Math.max(0, Math.min(galleryCards.length - 1, rawPosition))
-  } else {
-    galleryScrollPosition = normalizeGalleryIndex(rawPosition)
-  }
+  galleryScrollPosition = normalizeGalleryIndex(rawPosition)
 
   renderGallery()
 
-  if (!isMobile) {
-    const lowerResetPoint = galleryCards.length * 2
-    const upperResetPoint = galleryCards.length * (DESKTOP_GALLERY_LOOP_CYCLES - 2)
-    if (rawPosition < lowerResetPoint || rawPosition > upperResetPoint) {
-      const resetPosition = (
-        DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
-      ) * step
-      setGalleryScrollPositionInstantly(resetPosition)
-    }
+  const lowerResetPoint = galleryCards.length * 2
+  const upperResetPoint = galleryCards.length * (GALLERY_LOOP_CYCLES - 2)
+  if (rawPosition < lowerResetPoint || rawPosition > upperResetPoint) {
+    const resetPosition = (
+      GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
+    ) * step
+    setGalleryScrollPositionInstantly(resetPosition)
   }
 }
 
@@ -721,16 +703,12 @@ function navigateGalleryFromTap(event) {
   const direction = isMobile
     ? event.clientY < bounds.top + bounds.height / 2 ? -1 : 1
     : event.clientX < bounds.left + bounds.width / 2 ? -1 : 1
-  const currentIndex = Math.round(galleryScrollPosition)
-  const nextIndex = isMobile
-    ? Math.max(0, Math.min(galleryCards.length - 1, currentIndex + direction))
-    : normalizeGalleryIndex(currentIndex + direction)
+  const currentIndex = normalizeGalleryIndex(Math.round(galleryScrollPosition))
+  const nextIndex = normalizeGalleryIndex(currentIndex + direction)
 
   if (nextIndex === currentIndex) return
   playHapticSound()
-  const nextScrollPosition = isMobile
-    ? nextIndex
-    : Math.round(window.scrollY / getGalleryScrollStep()) + direction
+  const nextScrollPosition = Math.round(window.scrollY / getGalleryScrollStep()) + direction
   window.scrollTo({ top: nextScrollPosition * getGalleryScrollStep(), behavior: 'smooth' })
 }
 
@@ -773,14 +751,13 @@ function renderPage(page) {
 
   if (isGallery) {
     requestAnimationFrame(() => {
-      const isMobileGallery = window.matchMedia('(max-width: 1023px)').matches
       activeGalleryImage = 4
       galleryScrollPosition = activeGalleryImage
       updateGalleryScrollHeight()
       measureGalleryCards()
-      const initialScrollPosition = isMobileGallery
-        ? galleryScrollPosition
-        : DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
+      const initialScrollPosition = (
+        GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
+      )
       setGalleryScrollPositionInstantly(initialScrollPosition * getGalleryScrollStep())
       renderGallery()
     })
@@ -1292,12 +1269,9 @@ window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActio
 window.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true })
 window.addEventListener('resize', () => {
   if (document.body.dataset.page !== 'gallery') return
-  const isMobileGallery = window.matchMedia('(max-width: 1023px)').matches
   updateGalleryScrollHeight()
   measureGalleryCards()
-  const nextScrollPosition = isMobileGallery
-    ? galleryScrollPosition
-    : DESKTOP_GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
+  const nextScrollPosition = GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
   setGalleryScrollPositionInstantly(nextScrollPosition * getGalleryScrollStep())
   renderGallery()
 })
