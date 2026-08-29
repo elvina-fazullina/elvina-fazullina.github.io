@@ -549,13 +549,14 @@ function createMobileGalleryLayout(activeIndex) {
   const count = galleryCards.length
   const gap = Math.max(18, Math.min(26, window.innerWidth * 0.064))
   const layout = galleryCards.map((card, index) => {
-    const distance = Math.abs(getGalleryOffset(index, activeIndex))
+    const offset = getGalleryOffset(index, activeIndex)
+    const distance = Math.abs(offset)
     const scale = getMobileGalleryScale(distance)
     return {
       x: 0,
       y: 0,
       scale,
-      opacity: distance <= 1 ? 1 : 0,
+      opacity: offset >= -1 && offset <= 3 ? 1 : 0,
       z: 20 - distance,
       width: (galleryCardWidths[index] || card.offsetWidth) * scale,
       height: (galleryCardHeights[index] || card.offsetHeight) * scale,
