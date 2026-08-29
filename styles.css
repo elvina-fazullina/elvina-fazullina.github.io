@@ -870,10 +870,11 @@ button { font: inherit; }
   .hero__actions {
     position: absolute;
     z-index: 3;
-    top: calc(var(--stage-width) * 466 / 390);
+    top: auto;
+    bottom: calc(24px + (100vw * 28 / 390) + 40px);
     left: 50%;
     display: flex;
-    width: 53.3333%;
+    width: calc(100vw * 208 / 390);
     transform: translateX(-50%);
     flex-direction: column;
     gap: calc(var(--stage-width) * 12 / 390);
@@ -882,7 +883,7 @@ button { font: inherit; }
   .hero__contacts {
     position: absolute;
     z-index: 4;
-    bottom: max(40px, env(safe-area-inset-bottom));
+    bottom: 24px;
     left: 50%;
     display: flex;
     align-items: center;
