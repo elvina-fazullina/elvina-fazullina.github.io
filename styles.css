@@ -597,7 +597,7 @@ button { font: inherit; }
   width: auto;
   height: min(66svh, 560px);
   aspect-ratio: 2 / 3;
-  transform: translate(-50%, -50%) translateX(var(--gallery-x)) scale(var(--gallery-scale));
+  transform: translate3d(-50%, -50%, 0) translate3d(var(--gallery-x), 0, 0) scale(var(--gallery-scale));
   overflow: visible;
   border: 0;
   border-radius: 16px;
@@ -605,10 +605,8 @@ button { font: inherit; }
   background: transparent;
   opacity: var(--gallery-opacity);
   cursor: pointer;
-  transition:
-    opacity 90ms linear,
-    filter 180ms ease;
   will-change: transform, opacity;
+  backface-visibility: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -621,13 +619,11 @@ button { font: inherit; }
   overflow: hidden;
   border-radius: 16px;
   object-fit: cover;
-  box-shadow: 0 22px 60px rgb(0 0 0 / 44%);
+  backface-visibility: hidden;
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
 }
-
-.gallery-card:not(.is-active) { filter: brightness(0.78); }
 
 .gallery-card::after {
   position: absolute;

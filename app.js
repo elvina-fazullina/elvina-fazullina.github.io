@@ -74,9 +74,10 @@ let pullRefreshDistance = 0
 let pullRefreshTracking = false
 let pullRefreshActive = false
 let activeVimeoOverlay = null
-let activeGalleryImage = 3
-let galleryScrollPosition = 3
+let activeGalleryImage = 4
+let galleryScrollPosition = 4
 let galleryScrollFrame
+let galleryCardWidths = []
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -505,6 +506,10 @@ function getGalleryScale(distance) {
   return 0.28
 }
 
+function measureGalleryCards() {
+  galleryCardWidths = galleryCards.map((card) => card.offsetWidth)
+}
+
 function createGalleryLayout(activeIndex) {
   const count = galleryCards.length
   const gap = window.matchMedia('(max-width: 1023px)').matches ? 12 : 20
@@ -516,7 +521,7 @@ function createGalleryLayout(activeIndex) {
       scale,
       opacity: distance <= 2 ? 1 : distance === 3 ? 0.58 : 0,
       z: 20 - distance,
-      width: card.offsetWidth * scale,
+      width: (galleryCardWidths[index] || card.offsetWidth) * scale,
     }
   })
 
@@ -608,8 +613,15 @@ function scheduleGalleryScrollRender() {
   galleryScrollFrame = requestAnimationFrame(syncGalleryToPageScroll)
 }
 
-function advanceGalleryFromTap() {
-  const nextIndex = Math.min(galleryCards.length - 1, Math.floor(galleryScrollPosition + 1.001))
+function navigateGalleryFromTap(event) {
+  if (!galleryViewport || !galleryCards.length) return
+
+  const bounds = galleryViewport.getBoundingClientRect()
+  const direction = event.clientX < bounds.left + bounds.width / 2 ? -1 : 1
+  const currentIndex = Math.round(galleryScrollPosition)
+  const nextIndex = Math.max(0, Math.min(galleryCards.length - 1, currentIndex + direction))
+
+  if (nextIndex === currentIndex) return
   window.scrollTo({ top: nextIndex * getGalleryScrollStep(), behavior: 'smooth' })
 }
 
@@ -653,6 +665,7 @@ function renderPage(page) {
   if (isGallery) {
     requestAnimationFrame(() => {
       updateGalleryScrollHeight()
+      measureGalleryCards()
       galleryScrollPosition = activeGalleryImage
       window.scrollTo(0, galleryScrollPosition * getGalleryScrollStep())
       renderGallery()
@@ -1026,7 +1039,7 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
   })
 })
 
-galleryViewport?.addEventListener('click', advanceGalleryFromTap)
+galleryViewport?.addEventListener('click', navigateGalleryFromTap)
 
 document.querySelectorAll('[data-contact]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -1165,6 +1178,7 @@ window.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true }
 window.addEventListener('resize', () => {
   if (document.body.dataset.page !== 'gallery') return
   updateGalleryScrollHeight()
+  measureGalleryCards()
   window.scrollTo(0, galleryScrollPosition * getGalleryScrollStep())
   renderGallery()
 })
