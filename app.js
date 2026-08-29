@@ -31,8 +31,8 @@ const PULL_REFRESH_MAX_DISTANCE = 112
 const GALLERY_LOOP_CYCLES = 21
 const GALLERY_CENTER_CYCLE = Math.floor(GALLERY_LOOP_CYCLES / 2)
 const MOBILE_GALLERY_SCROLL_STEP = 0.72
-const MOBILE_GALLERY_SCROLL_EASING = 0.16
-const MOBILE_GALLERY_SETTLE_THRESHOLD = 0.001
+const MOBILE_GALLERY_SWIPE_THRESHOLD = 32
+const MOBILE_GALLERY_SNAP_DURATION = 420
 
 const contactDialog = document.querySelector('#contacts')
 const contactDialogClose = document.querySelector('.contact-dialog__close')
@@ -89,6 +89,13 @@ let galleryCardHeights = []
 let galleryLayoutCache = new Map()
 let galleryImagesInitialized = false
 let galleryCardStateInitialized = false
+let mobileGalleryPointerId = null
+let mobileGalleryPointerStartY = 0
+let mobileGalleryPointerStartPosition = 4
+let mobileGalleryDidDrag = false
+let mobileGallerySuppressClick = false
+let mobileGallerySnapFrame
+let mobileGalleryWheelLockedUntil = 0
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -641,7 +648,9 @@ function getGalleryScrollStep() {
 
 function updateGalleryScrollHeight() {
   if (!galleryPage) return
-  const scrollPositions = galleryCards.length * GALLERY_LOOP_CYCLES
+  const scrollPositions = window.matchMedia('(max-width: 1023px)').matches
+    ? 0
+    : galleryCards.length * GALLERY_LOOP_CYCLES
   const scrollDistance = getGalleryScrollStep() * scrollPositions
   galleryPage.style.setProperty('--gallery-scroll-distance', `${scrollDistance}px`)
 }
@@ -744,19 +753,11 @@ function renderGallery({ announce = false } = {}) {
 function syncGalleryToPageScroll() {
   galleryScrollFrame = undefined
   if (document.body.dataset.page !== 'gallery') return
+  if (window.matchMedia('(max-width: 1023px)').matches) return
   const step = getGalleryScrollStep()
   const rawPosition = step > 0 ? getGalleryScrollTop() / step : 0
-  const isMobile = window.matchMedia('(max-width: 1023px)').matches
   galleryScrollTarget = rawPosition
-  const progressDelta = galleryScrollTarget - galleryScrollPosition
-
-  if (isMobile && Math.abs(progressDelta) > MOBILE_GALLERY_SETTLE_THRESHOLD) {
-    galleryScrollPosition = normalizeGalleryIndex(
-      galleryScrollPosition + progressDelta * MOBILE_GALLERY_SCROLL_EASING,
-    )
-  } else {
-    galleryScrollPosition = galleryScrollTarget
-  }
+  galleryScrollPosition = galleryScrollTarget
 
   renderGallery()
 
@@ -772,17 +773,116 @@ function syncGalleryToPageScroll() {
     setGalleryScrollPositionInstantly(resetPosition * step)
   }
 
-  if (
-    isMobile &&
-    Math.abs(galleryScrollTarget - galleryScrollPosition) > MOBILE_GALLERY_SETTLE_THRESHOLD
-  ) {
-    galleryScrollFrame = requestAnimationFrame(syncGalleryToPageScroll)
-  }
 }
 
 function scheduleGalleryScrollRender() {
   if (galleryScrollFrame !== undefined) return
   galleryScrollFrame = requestAnimationFrame(syncGalleryToPageScroll)
+}
+
+function cancelMobileGallerySnap() {
+  if (mobileGallerySnapFrame !== undefined) cancelAnimationFrame(mobileGallerySnapFrame)
+  mobileGallerySnapFrame = undefined
+}
+
+function animateMobileGalleryTo(targetPosition) {
+  cancelMobileGallerySnap()
+  const startPosition = galleryScrollPosition
+  const distance = targetPosition - startPosition
+  const startedAt = performance.now()
+
+  const update = (now) => {
+    const progress = Math.min(1, (now - startedAt) / MOBILE_GALLERY_SNAP_DURATION)
+    const easedProgress = 1 - (1 - progress) ** 3
+    galleryScrollPosition = startPosition + distance * easedProgress
+    galleryScrollTarget = targetPosition
+    renderGallery()
+
+    if (progress < 1) {
+      mobileGallerySnapFrame = requestAnimationFrame(update)
+      return
+    }
+
+    galleryScrollPosition = targetPosition
+    galleryScrollTarget = targetPosition
+    mobileGallerySnapFrame = undefined
+    renderGallery()
+  }
+
+  mobileGallerySnapFrame = requestAnimationFrame(update)
+}
+
+function navigateMobileGallery(direction) {
+  if (!direction) return
+  playHapticSound()
+  animateMobileGalleryTo(Math.round(galleryScrollPosition) + direction)
+}
+
+function startMobileGalleryDrag(event) {
+  if (
+    document.body.dataset.page !== 'gallery' ||
+    !window.matchMedia('(max-width: 1023px)').matches ||
+    event.pointerType === 'mouse' && event.button !== 0
+  ) return
+
+  cancelMobileGallerySnap()
+  mobileGalleryPointerId = event.pointerId
+  mobileGalleryPointerStartY = event.clientY
+  mobileGalleryPointerStartPosition = Math.round(galleryScrollPosition)
+  mobileGalleryDidDrag = false
+  galleryViewport.setPointerCapture?.(event.pointerId)
+}
+
+function moveMobileGalleryDrag(event) {
+  if (event.pointerId !== mobileGalleryPointerId) return
+  const dragDistance = mobileGalleryPointerStartY - event.clientY
+  if (Math.abs(dragDistance) > 4) mobileGalleryDidDrag = true
+
+  galleryScrollPosition = mobileGalleryPointerStartPosition + (
+    dragDistance / (window.innerHeight * MOBILE_GALLERY_SCROLL_STEP)
+  )
+  galleryScrollTarget = galleryScrollPosition
+  renderGallery()
+  event.preventDefault()
+}
+
+function finishMobileGalleryDrag(event) {
+  if (event.pointerId !== mobileGalleryPointerId) return
+  const dragDistance = mobileGalleryPointerStartY - event.clientY
+  const direction = Math.abs(dragDistance) >= MOBILE_GALLERY_SWIPE_THRESHOLD
+    ? Math.sign(dragDistance)
+    : 0
+  const targetPosition = mobileGalleryPointerStartPosition + direction
+
+  if (galleryViewport.hasPointerCapture?.(event.pointerId)) {
+    galleryViewport.releasePointerCapture(event.pointerId)
+  }
+
+  mobileGalleryPointerId = null
+  mobileGallerySuppressClick = mobileGalleryDidDrag
+  mobileGalleryDidDrag = false
+  if (direction) playHapticSound()
+  animateMobileGalleryTo(targetPosition)
+
+  if (mobileGallerySuppressClick) {
+    requestAnimationFrame(() => {
+      mobileGallerySuppressClick = false
+    })
+  }
+}
+
+function handleMobileGalleryWheel(event) {
+  if (
+    document.body.dataset.page !== 'gallery' ||
+    !window.matchMedia('(max-width: 1023px)').matches ||
+    Math.abs(event.deltaY) < 8
+  ) return
+
+  event.preventDefault()
+  const now = performance.now()
+  if (now < mobileGalleryWheelLockedUntil) return
+  mobileGalleryWheelLockedUntil = now + MOBILE_GALLERY_SNAP_DURATION
+  navigateMobileGallery(Math.sign(event.deltaY))
 }
 
 function navigateGalleryFromTap(event) {
@@ -793,6 +893,13 @@ function navigateGalleryFromTap(event) {
   const direction = isMobile
     ? event.clientY < bounds.top + bounds.height / 2 ? -1 : 1
     : event.clientX < bounds.left + bounds.width / 2 ? -1 : 1
+
+  if (isMobile) {
+    if (mobileGallerySuppressClick) return
+    navigateMobileGallery(direction)
+    return
+  }
+
   const currentIndex = normalizeGalleryIndex(Math.round(galleryScrollPosition))
   const nextIndex = normalizeGalleryIndex(currentIndex + direction)
 
@@ -847,6 +954,7 @@ function renderPage(page) {
 
   if (isGallery) {
     requestAnimationFrame(() => {
+      const isMobileGallery = window.matchMedia('(max-width: 1023px)').matches
       activeGalleryImage = 4
       galleryScrollPosition = activeGalleryImage
       galleryScrollTarget = galleryScrollPosition
@@ -854,9 +962,9 @@ function renderPage(page) {
       galleryCardStateInitialized = false
       updateGalleryScrollHeight()
       measureGalleryCards()
-      const initialScrollPosition = (
-        GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
-      )
+      const initialScrollPosition = isMobileGallery
+        ? galleryScrollPosition
+        : GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
       galleryScrollPosition = initialScrollPosition
       galleryScrollTarget = initialScrollPosition
       setGalleryScrollPositionInstantly(initialScrollPosition * getGalleryScrollStep())
@@ -1233,6 +1341,11 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
 })
 
 galleryViewport?.addEventListener('click', navigateGalleryFromTap)
+galleryViewport?.addEventListener('pointerdown', startMobileGalleryDrag)
+galleryViewport?.addEventListener('pointermove', moveMobileGalleryDrag, { passive: false })
+galleryViewport?.addEventListener('pointerup', finishMobileGalleryDrag)
+galleryViewport?.addEventListener('pointercancel', finishMobileGalleryDrag)
+galleryViewport?.addEventListener('wheel', handleMobileGalleryWheel, { passive: false })
 
 document.querySelectorAll('[data-contact]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -1374,9 +1487,9 @@ window.addEventListener('resize', () => {
   galleryImagesInitialized = false
   updateGalleryScrollHeight()
   measureGalleryCards()
-  const nextScrollPosition = (
-    GALLERY_CENTER_CYCLE * galleryCards.length + normalizeGalleryIndex(galleryScrollPosition)
-  )
+  const nextScrollPosition = window.matchMedia('(max-width: 1023px)').matches
+    ? normalizeGalleryIndex(galleryScrollPosition)
+    : GALLERY_CENTER_CYCLE * galleryCards.length + normalizeGalleryIndex(galleryScrollPosition)
   galleryScrollPosition = nextScrollPosition
   galleryScrollTarget = nextScrollPosition
   setGalleryScrollPositionInstantly(nextScrollPosition * getGalleryScrollStep())
