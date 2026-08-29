@@ -1,8 +1,8 @@
 @font-face {
   font-family: 'Kamalov Display';
   src:
-    url('/assets/fonts/league-gothic.woff2') format('woff2'),
-    url('/assets/fonts/league-gothic.ttf') format('truetype');
+    url('/league-gothic.woff2'),
+    url('/league-gothic.ttf');
   font-weight: 400;
   font-style: normal;
   font-display: block;
@@ -11,8 +11,8 @@
 @font-face {
   font-family: 'Bebas Neue';
   src:
-    url('/assets/fonts/bebas-neue-bold.woff2') format('woff2'),
-    url('/assets/fonts/bebas-neue-bold.ttf') format('truetype');
+    url('/bebas-neue-bold.woff2'),
+    url('/bebas-neue-bold.ttf;
   font-weight: 700;
   font-style: normal;
   font-display: block;
@@ -21,8 +21,8 @@
 @font-face {
   font-family: 'Geist Mono';
   src:
-    url('/assets/fonts/geist-mono-medium.woff2') format('woff2'),
-    url('/assets/fonts/geist-mono-medium.ttf') format('truetype');
+    url('/geist-mono-medium.woff2'),
+    url('/geist-mono-medium.ttf');
   font-weight: 500;
   font-style: normal;
   font-display: block;
