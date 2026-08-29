@@ -11,8 +11,8 @@
 @font-face {
   font-family: 'Bebas Neue';
   src:
-    url('/bebas-neue-bold.woff2'),
-    url('/bebas-neue-bold.ttf;
+    url('/bebas-neue-bold.woff2') format('woff2'),
+    url('/bebas-neue-bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: block;
