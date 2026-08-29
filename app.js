@@ -48,6 +48,7 @@ const showreelPage = document.querySelector('#showreel')
 const galleryPage = document.querySelector('#gallery')
 const galleryViewport = document.querySelector('#gallery-viewport')
 const galleryCards = [...document.querySelectorAll('[data-gallery-index]')]
+const galleryImages = galleryCards.map((card) => card.querySelector('img[data-src]'))
 const galleryStatus = document.querySelector('#gallery-status')
 const pullRefresh = document.querySelector('#pull-refresh')
 let activeShowreel = Math.max(0, SHOWREELS.findIndex((item) => item.vimeo || item.video))
@@ -81,6 +82,9 @@ let galleryScrollPosition = 4
 let galleryScrollFrame
 let galleryCardWidths = []
 let galleryCardHeights = []
+let galleryLayoutCache = new Map()
+let galleryImagesInitialized = false
+let galleryCardStateInitialized = false
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -518,6 +522,7 @@ function getGalleryScale(distance) {
 function measureGalleryCards() {
   galleryCardWidths = galleryCards.map((card) => card.offsetWidth)
   galleryCardHeights = galleryCards.map((card) => card.offsetHeight)
+  galleryLayoutCache = new Map()
 }
 
 function getMobileGalleryScale(distance) {
@@ -566,8 +571,15 @@ function createMobileGalleryLayout(activeIndex) {
 }
 
 function createGalleryLayout(activeIndex) {
-  if (window.matchMedia('(max-width: 1023px)').matches) {
-    return createMobileGalleryLayout(activeIndex)
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches
+  const cacheKey = `${isMobile ? 'mobile' : 'desktop'}-${activeIndex}`
+  const cachedLayout = galleryLayoutCache.get(cacheKey)
+  if (cachedLayout) return cachedLayout
+
+  if (isMobile) {
+    const layout = createMobileGalleryLayout(activeIndex)
+    galleryLayoutCache.set(cacheKey, layout)
+    return layout
   }
 
   const count = galleryCards.length
@@ -600,15 +612,15 @@ function createGalleryLayout(activeIndex) {
     }
   }
 
+  galleryLayoutCache.set(cacheKey, layout)
   return layout
 }
 
 function loadNearbyGalleryImages() {
   const isMobile = window.matchMedia('(max-width: 1023px)').matches
   const preloadDistance = isMobile ? 5 : 2
-  galleryCards.forEach((card, index) => {
+  galleryImages.forEach((image, index) => {
     if (Math.abs(getGalleryOffset(index)) > preloadDistance) return
-    const image = card.querySelector('img[data-src]')
     if (!image) return
     const source = isMobile ? image.dataset.mobileSrc : image.dataset.src
     if (source && image.getAttribute('src') !== source) image.src = source
@@ -645,6 +657,7 @@ function renderGallery({ announce = false } = {}) {
   const nextActiveImage = normalizeGalleryIndex(Math.round(galleryScrollPosition))
   const activeChanged = nextActiveImage !== activeGalleryImage
   activeGalleryImage = nextActiveImage
+  const shouldUpdateCardState = activeChanged || !galleryCardStateInitialized
 
   galleryCards.forEach((card, index) => {
     const offset = getGalleryOffset(index)
@@ -656,25 +669,31 @@ function renderGallery({ announce = false } = {}) {
     const scale = current.scale + (target.scale - current.scale) * progress
     const opacity = current.opacity + (target.opacity - current.opacity) * progress
     const isNearby = current.opacity > 0 || target.opacity > 0
+    const wasNearby = card.classList.contains('is-nearby')
 
-    card.classList.toggle('is-nearby', isNearby)
-    card.classList.toggle('is-active', distance === 0)
-    card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
-    card.tabIndex = distance === 0 ? 0 : -1
+    if (wasNearby !== isNearby) card.classList.toggle('is-nearby', isNearby)
+
+    if (shouldUpdateCardState) {
+      card.classList.toggle('is-active', distance === 0)
+      card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
+      card.tabIndex = distance === 0 ? 0 : -1
+    }
 
     if (!isNearby) {
-      card.style.setProperty('--gallery-opacity', '0')
+      if (wasNearby) card.style.opacity = '0'
       return
     }
 
-    card.style.setProperty('--gallery-x', `${x}px`)
-    card.style.setProperty('--gallery-y', `${y}px`)
-    card.style.setProperty('--gallery-scale', String(scale))
-    card.style.setProperty('--gallery-opacity', String(opacity))
-    card.style.setProperty('--gallery-z', String(Math.max(current.z, target.z)))
+    card.style.transform = `translate3d(-50%, -50%, 0) translate3d(${x}px, ${y}px, 0) scale(${scale})`
+    card.style.opacity = String(opacity)
+    card.style.zIndex = String(Math.max(current.z, target.z))
   })
 
-  loadNearbyGalleryImages()
+  galleryCardStateInitialized = true
+  if (activeChanged || !galleryImagesInitialized) {
+    loadNearbyGalleryImages()
+    galleryImagesInitialized = true
+  }
   if ((announce || activeChanged) && galleryStatus) {
     galleryStatus.textContent = `Фотография ${activeGalleryImage + 1} из ${galleryCards.length}`
   }
@@ -762,6 +781,8 @@ function renderPage(page) {
     requestAnimationFrame(() => {
       activeGalleryImage = 4
       galleryScrollPosition = activeGalleryImage
+      galleryImagesInitialized = false
+      galleryCardStateInitialized = false
       updateGalleryScrollHeight()
       measureGalleryCards()
       const initialScrollPosition = (
@@ -1278,6 +1299,7 @@ window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActio
 window.addEventListener('scroll', scheduleGalleryScrollRender, { passive: true })
 window.addEventListener('resize', () => {
   if (document.body.dataset.page !== 'gallery') return
+  galleryImagesInitialized = false
   updateGalleryScrollHeight()
   measureGalleryCards()
   const nextScrollPosition = GALLERY_CENTER_CYCLE * galleryCards.length + galleryScrollPosition
