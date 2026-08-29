@@ -607,9 +607,14 @@ button { font: inherit; }
   background: transparent;
   opacity: var(--gallery-opacity);
   cursor: pointer;
-  will-change: transform, opacity;
+  visibility: hidden;
   backface-visibility: hidden;
   -webkit-tap-highlight-color: transparent;
+}
+
+.gallery-card.is-nearby {
+  visibility: visible;
+  will-change: transform, opacity;
 }
 
 .gallery-card--landscape { aspect-ratio: 3 / 2; }
@@ -985,7 +990,7 @@ button { font: inherit; }
     height: 100%;
     min-height: 100%;
     margin: 0;
-    padding: 40px 14.5px 0;
+    padding: 32px 14.5px 0;
     overflow: hidden;
     gap: 16px;
     scroll-snap-align: start;

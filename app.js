@@ -538,7 +538,7 @@ function createMobileGalleryLayout(activeIndex) {
       x: 0,
       y: 0,
       scale,
-      opacity: 1,
+      opacity: distance <= 1 ? 1 : 0,
       z: 20 - distance,
       width: (galleryCardWidths[index] || card.offsetWidth) * scale,
       height: (galleryCardHeights[index] || card.offsetHeight) * scale,
@@ -654,15 +654,23 @@ function renderGallery({ announce = false } = {}) {
     const y = current.y + (target.y - current.y) * progress
     const scale = current.scale + (target.scale - current.scale) * progress
     const opacity = current.opacity + (target.opacity - current.opacity) * progress
+    const isNearby = current.opacity > 0 || target.opacity > 0
+
+    card.classList.toggle('is-nearby', isNearby)
+    card.classList.toggle('is-active', distance === 0)
+    card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
+    card.tabIndex = distance === 0 ? 0 : -1
+
+    if (!isNearby) {
+      card.style.setProperty('--gallery-opacity', '0')
+      return
+    }
 
     card.style.setProperty('--gallery-x', `${x}px`)
     card.style.setProperty('--gallery-y', `${y}px`)
     card.style.setProperty('--gallery-scale', String(scale))
     card.style.setProperty('--gallery-opacity', String(opacity))
     card.style.setProperty('--gallery-z', String(Math.max(current.z, target.z)))
-    card.classList.toggle('is-active', distance === 0)
-    card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
-    card.tabIndex = distance === 0 ? 0 : -1
   })
 
   loadNearbyGalleryImages()
