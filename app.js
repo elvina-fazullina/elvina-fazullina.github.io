@@ -75,12 +75,10 @@ let pullRefreshTracking = false
 let pullRefreshActive = false
 let activeVimeoOverlay = null
 let activeGalleryImage = 3
-let galleryWheelLockedUntil = 0
 let galleryPointerId = null
 let galleryPointerStartX = 0
 let galleryPointerStartY = 0
 let galleryDragOffset = 0
-let galleryIgnoreClick = false
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -595,19 +593,6 @@ function selectGalleryImage(index, { announce = true } = {}) {
   renderGallery({ announce })
 }
 
-function handleGalleryWheel(event) {
-  if (document.body.dataset.page !== 'gallery') return
-  event.preventDefault()
-
-  const now = performance.now()
-  if (now < galleryWheelLockedUntil) return
-  const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
-  if (Math.abs(delta) < 8) return
-
-  galleryWheelLockedUntil = now + 460
-  selectGalleryImage(activeGalleryImage + (delta > 0 ? 1 : -1))
-}
-
 function startGalleryDrag(event) {
   if (event.button !== 0 && event.pointerType === 'mouse') return
   galleryPointerId = event.pointerId
@@ -639,13 +624,11 @@ function finishGalleryDrag(event, allowChange = true) {
   const offset = galleryDragOffset
   galleryPointerId = null
   galleryDragOffset = 0
-  galleryIgnoreClick = Math.abs(offset) >= 8
   if (allowChange && Math.abs(offset) >= 44) {
     selectGalleryImage(activeGalleryImage + (offset < 0 ? 1 : -1))
   } else {
     renderGallery()
   }
-  window.setTimeout(() => { galleryIgnoreClick = false }, 0)
 }
 
 function renderPage(page) {
@@ -1054,14 +1037,6 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
   })
 })
 
-galleryCards.forEach((card, index) => {
-  card.addEventListener('click', () => {
-    if (galleryIgnoreClick) return
-    if (index !== activeGalleryImage) selectGalleryImage(index)
-  })
-})
-
-galleryViewport?.addEventListener('wheel', handleGalleryWheel, { passive: false })
 galleryViewport?.addEventListener('pointerdown', startGalleryDrag)
 galleryViewport?.addEventListener('pointermove', moveGalleryDrag)
 galleryViewport?.addEventListener('pointerup', (event) => finishGalleryDrag(event))
@@ -1166,14 +1141,6 @@ window.addEventListener('keydown', (event) => {
   }
 
   if (document.body.dataset.page === 'gallery') {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      event.preventDefault()
-      selectGalleryImage(activeGalleryImage - 1)
-    }
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      event.preventDefault()
-      selectGalleryImage(activeGalleryImage + 1)
-    }
     return
   }
 
