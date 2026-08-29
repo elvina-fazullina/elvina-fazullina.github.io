@@ -338,6 +338,12 @@ button { font: inherit; }
 
 .showreel__desktop .showreel-card__media { will-change: transform, opacity; }
 
+.showreel-card__media--hint-next {
+  z-index: 1;
+  transform: translate(-50%, calc(50% + 16px));
+  pointer-events: none;
+}
+
 .showreel__swipe-surface {
   position: absolute;
   z-index: 4;

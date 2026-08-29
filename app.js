@@ -8,22 +8,22 @@ const MOBILE_SHOWREEL_PLAY_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA
 
 const SHOWREELS = [
   {
-    title: 'Дни рождения',
-    vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
-    mobilePoster: 'showreel-birthday-poster.png',
-    mobileVideo: 'showreel-birthday.mp4',
-  },
-  {
     title: 'Корпоративы',
     vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
     mobilePoster: 'showreel-corporate-poster.png',
     mobileVideo: 'showreel-corporate.mp4',
   },
+  {
+    title: 'Дни рождения',
+    vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
+    mobilePoster: 'showreel-birthday-poster.png',
+    mobileVideo: 'showreel-birthday.mp4',
+  },
   { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
 ]
 
 const MOBILE_SCROLL_HINT_DELAY = 2_000
-const DESKTOP_SCROLL_HINT_DELAY = 5_000
+const DESKTOP_SCROLL_HINT_DELAY = 2_000
 const DESKTOP_SWIPE_THRESHOLD = 72
 const DESKTOP_SWIPE_MAX_OFFSET = 120
 const PULL_REFRESH_THRESHOLD = 88
@@ -54,6 +54,8 @@ let mobileFeedIsResetting = false
 let desktopSwitchInProgress = false
 let desktopScrollHintTimer
 let desktopScrollHintAnimation
+let desktopScrollHintPreview
+let desktopScrollHintPreviewAnimation
 let desktopScrollHintPlayed = false
 let desktopShowreelInteracted = false
 let desktopWheelLockedUntil = 0
@@ -298,7 +300,11 @@ function handleMobileFeedScroll() {
 function cancelDesktopScrollHint() {
   window.clearTimeout(desktopScrollHintTimer)
   desktopScrollHintAnimation?.cancel()
+  desktopScrollHintPreviewAnimation?.cancel()
+  desktopScrollHintPreview?.remove()
   desktopScrollHintAnimation = null
+  desktopScrollHintPreviewAnimation = null
+  desktopScrollHintPreview = null
   desktopShowreel.classList.remove('is-scroll-hinting')
 }
 
@@ -329,21 +335,56 @@ function scheduleDesktopScrollHint() {
       return
     }
 
+    const nextItem = SHOWREELS[activeShowreel + 1]
+    if (!nextItem) return
+
+    const preview = document.createElement('div')
+    preview.className = 'showreel-card__media showreel-card__media--hint-next'
+    preview.setAttribute('aria-hidden', 'true')
+
+    if (nextItem.mobilePoster) {
+      const image = document.createElement('img')
+      image.className = 'showreel-poster__image'
+      image.src = nextItem.mobilePoster
+      image.alt = ''
+      preview.append(image)
+    } else {
+      const placeholder = document.createElement('p')
+      placeholder.className = 'showreel-card__placeholder'
+      placeholder.textContent = nextItem.placeholder || nextItem.title
+      preview.append(placeholder)
+    }
+
+    desktopShowreel.append(preview)
+    desktopScrollHintPreview = preview
     desktopScrollHintPlayed = true
     desktopShowreel.classList.add('is-scroll-hinting')
     desktopScrollHintAnimation = desktopVideo.animate(
       [
         { transform: 'translate(-50%, -50%)', offset: 0 },
-        { transform: 'translate(-50%, calc(-50% - 64px))', offset: 0.42 },
-        { transform: 'translate(-50%, calc(-50% - 64px))', offset: 0.58 },
+        { transform: 'translate(-50%, -50%)', offset: 0.12 },
+        { transform: 'translate(-50%, calc(-50% - 110px))', offset: 0.48 },
         { transform: 'translate(-50%, -50%)', offset: 1 },
       ],
-      { duration: 1_400, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
+      { duration: 500, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
+    )
+    desktopScrollHintPreviewAnimation = preview.animate(
+      [
+        { transform: 'translate(-50%, calc(50% + 16px))', offset: 0 },
+        { transform: 'translate(-50%, calc(50% + 16px))', offset: 0.12 },
+        { transform: 'translate(-50%, calc(50% - 94px))', offset: 0.48 },
+        { transform: 'translate(-50%, calc(50% + 16px))', offset: 1 },
+      ],
+      { duration: 500, easing: 'cubic-bezier(0.33, 1, 0.68, 1)' },
     )
 
     const finishHint = () => {
+      desktopScrollHintPreviewAnimation?.cancel()
+      desktopScrollHintPreview?.remove()
       desktopShowreel.classList.remove('is-scroll-hinting')
       desktopScrollHintAnimation = null
+      desktopScrollHintPreviewAnimation = null
+      desktopScrollHintPreview = null
     }
     desktopScrollHintAnimation.addEventListener('finish', finishHint, { once: true })
     desktopScrollHintAnimation.addEventListener('cancel', finishHint, { once: true })
