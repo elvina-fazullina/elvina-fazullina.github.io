@@ -78,6 +78,7 @@ let activeGalleryImage = 4
 let galleryScrollPosition = 4
 let galleryScrollFrame
 let galleryCardWidths = []
+let galleryCardHeights = []
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -491,6 +492,8 @@ function finishDesktopSwipe(event, allowSwitch = true) {
 }
 
 function getGalleryOffset(index, activeIndex = activeGalleryImage) {
+  if (window.matchMedia('(max-width: 1023px)').matches) return index - activeIndex
+
   const count = galleryCards.length
   let offset = index - activeIndex
 
@@ -508,16 +511,68 @@ function getGalleryScale(distance) {
 
 function measureGalleryCards() {
   galleryCardWidths = galleryCards.map((card) => card.offsetWidth)
+  galleryCardHeights = galleryCards.map((card) => card.offsetHeight)
+}
+
+function getMobileGalleryScale(distance) {
+  if (distance === 0) return 1
+  if (distance === 1) return 0.48
+  if (distance === 2) return 0.27
+  if (distance === 3) return 0.16
+  if (distance === 4) return 0.1
+  return 0.06
+}
+
+function createMobileGalleryLayout(activeIndex) {
+  const gap = Math.max(18, Math.min(26, window.innerWidth * 0.064))
+  const layout = galleryCards.map((card, index) => {
+    const distance = Math.abs(index - activeIndex)
+    const scale = getMobileGalleryScale(distance)
+    return {
+      x: 0,
+      y: 0,
+      scale,
+      opacity: 1,
+      z: 20 - distance,
+      width: (galleryCardWidths[index] || card.offsetWidth) * scale,
+      height: (galleryCardHeights[index] || card.offsetHeight) * scale,
+    }
+  })
+
+  const activeHeight = layout[activeIndex]?.height || 0
+  const activeY = -window.innerHeight / 2 + 32 + activeHeight / 2
+  layout[activeIndex].y = activeY
+
+  for (const direction of [-1, 1]) {
+    let previousIndex = activeIndex
+
+    for (let distance = 1; distance < galleryCards.length; distance += 1) {
+      const index = activeIndex + direction * distance
+      if (index < 0 || index >= galleryCards.length) break
+
+      layout[index].y = layout[previousIndex].y + direction * (
+        layout[previousIndex].height / 2 + gap + layout[index].height / 2
+      )
+      previousIndex = index
+    }
+  }
+
+  return layout
 }
 
 function createGalleryLayout(activeIndex) {
+  if (window.matchMedia('(max-width: 1023px)').matches) {
+    return createMobileGalleryLayout(activeIndex)
+  }
+
   const count = galleryCards.length
-  const gap = window.matchMedia('(max-width: 1023px)').matches ? 12 : 20
+  const gap = 20
   const layout = galleryCards.map((card, index) => {
     const distance = Math.abs(getGalleryOffset(index, activeIndex))
     const scale = getGalleryScale(distance)
     return {
       x: 0,
+      y: 0,
       scale,
       opacity: distance <= 2 ? 1 : distance === 3 ? 0.58 : 0,
       z: 20 - distance,
@@ -544,15 +599,16 @@ function createGalleryLayout(activeIndex) {
 }
 
 function loadNearbyGalleryImages() {
+  const preloadDistance = window.matchMedia('(max-width: 1023px)').matches ? 5 : 2
   galleryCards.forEach((card, index) => {
-    if (Math.abs(getGalleryOffset(index)) > 2) return
+    if (Math.abs(getGalleryOffset(index)) > preloadDistance) return
     const image = card.querySelector('img[data-src]')
     if (image && !image.hasAttribute('src')) image.src = image.dataset.src
   })
 }
 
 function getGalleryScrollStep() {
-  return window.innerHeight * (window.matchMedia('(max-width: 1023px)').matches ? 0.48 : 0.55)
+  return window.innerHeight * (window.matchMedia('(max-width: 1023px)').matches ? 0.32 : 0.55)
 }
 
 function updateGalleryScrollHeight() {
@@ -579,10 +635,12 @@ function renderGallery({ announce = false } = {}) {
     const current = currentLayout[index]
     const target = targetLayout[index]
     const x = current.x + (target.x - current.x) * progress
+    const y = current.y + (target.y - current.y) * progress
     const scale = current.scale + (target.scale - current.scale) * progress
     const opacity = current.opacity + (target.opacity - current.opacity) * progress
 
     card.style.setProperty('--gallery-x', `${x}px`)
+    card.style.setProperty('--gallery-y', `${y}px`)
     card.style.setProperty('--gallery-scale', String(scale))
     card.style.setProperty('--gallery-opacity', String(opacity))
     card.style.setProperty('--gallery-z', String(Math.max(current.z, target.z)))
@@ -617,7 +675,10 @@ function navigateGalleryFromTap(event) {
   if (!galleryViewport || !galleryCards.length) return
 
   const bounds = galleryViewport.getBoundingClientRect()
-  const direction = event.clientX < bounds.left + bounds.width / 2 ? -1 : 1
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches
+  const direction = isMobile
+    ? event.clientY < bounds.top + bounds.height / 2 ? -1 : 1
+    : event.clientX < bounds.left + bounds.width / 2 ? -1 : 1
   const currentIndex = Math.round(galleryScrollPosition)
   const nextIndex = Math.max(0, Math.min(galleryCards.length - 1, currentIndex + direction))
 
@@ -664,9 +725,10 @@ function renderPage(page) {
 
   if (isGallery) {
     requestAnimationFrame(() => {
+      activeGalleryImage = window.matchMedia('(max-width: 1023px)').matches ? 0 : 4
+      galleryScrollPosition = activeGalleryImage
       updateGalleryScrollHeight()
       measureGalleryCards()
-      galleryScrollPosition = activeGalleryImage
       window.scrollTo(0, galleryScrollPosition * getGalleryScrollStep())
       renderGallery()
     })
