@@ -67,7 +67,7 @@ let desktopSwipePointerId = null
 let desktopSwipeStartY = 0
 let desktopSwipeOffset = 0
 let desktopSwipeReturnAnimation
-let tabHapticAudioContext
+let tapSound
 let pullRefreshStartX = 0
 let pullRefreshStartY = 0
 let pullRefreshDistance = 0
@@ -155,52 +155,11 @@ function handlePullRefreshEnd() {
 function playHapticSound(volumeMultiplier = 1) {
   navigator.vibrate?.(8)
 
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext
-  if (!AudioContextClass) return
-
-  tabHapticAudioContext ||= new AudioContextClass()
-  const context = tabHapticAudioContext
-  const volume = Math.max(0, Math.min(2, volumeMultiplier))
-
-  const playPulse = () => {
-    const now = context.currentTime
-
-    const createTone = ({ startFrequency, endFrequency, volume, duration, type }) => {
-      const oscillator = context.createOscillator()
-      const gain = context.createGain()
-      oscillator.type = type
-      oscillator.frequency.setValueAtTime(startFrequency, now)
-      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, now + duration)
-      gain.gain.setValueAtTime(0.0001, now)
-      gain.gain.exponentialRampToValueAtTime(volume, now + 0.004)
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration)
-      oscillator.connect(gain)
-      gain.connect(context.destination)
-      oscillator.start(now)
-      oscillator.stop(now + duration)
-    }
-
-    createTone({
-      startFrequency: 180,
-      endFrequency: 110,
-      volume: 0.055 * volume,
-      duration: 0.055,
-      type: 'triangle',
-    })
-    createTone({
-      startFrequency: 900,
-      endFrequency: 520,
-      volume: 0.022 * volume,
-      duration: 0.022,
-      type: 'sine',
-    })
-  }
-
-  if (context.state === 'suspended') {
-    context.resume().then(playPulse).catch(() => {})
-  } else {
-    playPulse()
-  }
+  tapSound ||= new Audio('/tap.wav')
+  tapSound.preload = 'auto'
+  tapSound.volume = Math.max(0, Math.min(1, volumeMultiplier))
+  tapSound.currentTime = 0
+  tapSound.play().catch(() => {})
 }
 
 function pauseShowreelMedia(media) {
