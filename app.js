@@ -546,8 +546,7 @@ function createMobileGalleryLayout(activeIndex) {
     }
   })
 
-  const activeHeight = layout[activeIndex]?.height || 0
-  const activeY = -window.innerHeight / 2 + 32 + activeHeight / 2
+  const activeY = -24
   layout[activeIndex].y = activeY
 
   for (const direction of [-1, 1]) {
@@ -606,11 +605,14 @@ function createGalleryLayout(activeIndex) {
 }
 
 function loadNearbyGalleryImages() {
-  const preloadDistance = window.matchMedia('(max-width: 1023px)').matches ? 5 : 2
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches
+  const preloadDistance = isMobile ? 5 : 2
   galleryCards.forEach((card, index) => {
     if (Math.abs(getGalleryOffset(index)) > preloadDistance) return
     const image = card.querySelector('img[data-src]')
-    if (image && !image.hasAttribute('src')) image.src = image.dataset.src
+    if (!image) return
+    const source = isMobile ? image.dataset.mobileSrc : image.dataset.src
+    if (source && image.getAttribute('src') !== source) image.src = source
   })
 }
 
@@ -772,7 +774,7 @@ function renderPage(page) {
   if (isGallery) {
     requestAnimationFrame(() => {
       const isMobileGallery = window.matchMedia('(max-width: 1023px)').matches
-      activeGalleryImage = isMobileGallery ? 0 : 4
+      activeGalleryImage = 4
       galleryScrollPosition = activeGalleryImage
       updateGalleryScrollHeight()
       measureGalleryCards()
