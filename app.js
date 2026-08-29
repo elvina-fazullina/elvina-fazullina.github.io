@@ -306,6 +306,7 @@ function scheduleMobileScrollHint() {
 
 function handleMobileFeedScroll() {
   if (mobileFeedIsResetting || mobileScrollHintAnimating) return
+  if (mobileFeed.scrollTop <= 1 && activeShowreel === 0) return
   markMobileFeedInteraction()
 }
 
