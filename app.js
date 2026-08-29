@@ -683,6 +683,7 @@ function navigateGalleryFromTap(event) {
   const nextIndex = Math.max(0, Math.min(galleryCards.length - 1, currentIndex + direction))
 
   if (nextIndex === currentIndex) return
+  playHapticSound()
   window.scrollTo({ top: nextIndex * getGalleryScrollStep(), behavior: 'smooth' })
 }
 
