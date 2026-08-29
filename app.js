@@ -10,14 +10,14 @@ const SHOWREELS = [
   {
     title: 'Корпоративы',
     vimeo: 'https://player.vimeo.com/video/1220923496?app_id=122963',
-    mobilePoster: 'showreel-corporate-poster.png',
-    mobileVideo: 'showreel-corporate.mp4',
+    mobilePoster: '/showreel-corporate-poster.png',
+    mobileVideo: '/showreel-corporate.mp4',
   },
   {
     title: 'Дни рождения',
     vimeo: 'https://player.vimeo.com/video/1220922735?app_id=122963',
-    mobilePoster: 'showreel-birthday-poster.png',
-    mobileVideo: 'showreel-birthday.mp4',
+    mobilePoster: '/showreel-birthday-poster.png',
+    mobileVideo: '/showreel-birthday.mp4',
   },
   { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
 ]
@@ -43,6 +43,10 @@ const desktopShowreel = document.querySelector('.showreel__desktop')
 const desktopSwipeSurface = document.querySelector('.showreel__swipe-surface')
 const homePage = document.querySelector('#home')
 const showreelPage = document.querySelector('#showreel')
+const galleryPage = document.querySelector('#gallery')
+const galleryViewport = document.querySelector('#gallery-viewport')
+const galleryCards = [...document.querySelectorAll('[data-gallery-index]')]
+const galleryStatus = document.querySelector('#gallery-status')
 const pullRefresh = document.querySelector('#pull-refresh')
 let activeShowreel = Math.max(0, SHOWREELS.findIndex((item) => item.vimeo || item.video))
 let mobileScrollHintTimer
@@ -70,6 +74,13 @@ let pullRefreshDistance = 0
 let pullRefreshTracking = false
 let pullRefreshActive = false
 let activeVimeoOverlay = null
+let activeGalleryImage = 3
+let galleryWheelLockedUntil = 0
+let galleryPointerId = null
+let galleryPointerStartX = 0
+let galleryPointerStartY = 0
+let galleryDragOffset = 0
+let galleryIgnoreClick = false
 
 if ('scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'
@@ -87,6 +98,7 @@ function resetPullRefresh() {
 function handlePullRefreshStart(event) {
   if (
     !window.matchMedia('(max-width: 1023px)').matches ||
+    document.body.dataset.page === 'gallery' ||
     contactDialog?.open ||
     pullRefresh.classList.contains('is-refreshing') ||
     event.touches.length !== 1
@@ -481,17 +493,131 @@ function finishDesktopSwipe(event, allowSwitch = true) {
   if (nextIndex !== activeShowreel) switchDesktopShowreel(nextIndex)
 }
 
+function getGalleryOffset(index) {
+  const count = galleryCards.length
+  let offset = index - activeGalleryImage
+
+  if (offset > count / 2) offset -= count
+  if (offset < -count / 2) offset += count
+  return offset
+}
+
+function loadNearbyGalleryImages() {
+  galleryCards.forEach((card, index) => {
+    if (Math.abs(getGalleryOffset(index)) > 2) return
+    const image = card.querySelector('img[data-src]')
+    if (image && !image.hasAttribute('src')) image.src = image.dataset.src
+  })
+}
+
+function renderGallery({ announce = false } = {}) {
+  if (!galleryViewport || !galleryCards.length) return
+
+  const isMobile = window.matchMedia('(max-width: 1023px)').matches
+  const viewportWidth = galleryViewport.clientWidth || window.innerWidth
+  const step = isMobile
+    ? Math.min(viewportWidth * 0.7, 310)
+    : Math.min(viewportWidth * 0.225, 330)
+
+  galleryCards.forEach((card, index) => {
+    const offset = getGalleryOffset(index)
+    const distance = Math.abs(offset)
+    const scale = distance === 0 ? 1 : distance === 1 ? 0.66 : distance === 2 ? 0.43 : 0.28
+    const opacity = distance <= 2 ? 1 : distance === 3 ? 0.58 : 0
+
+    card.style.setProperty('--gallery-x', `${offset * step + galleryDragOffset}px`)
+    card.style.setProperty('--gallery-scale', String(scale))
+    card.style.setProperty('--gallery-opacity', String(opacity))
+    card.style.setProperty('--gallery-z', String(20 - distance))
+    card.classList.toggle('is-active', distance === 0)
+    card.setAttribute('aria-current', distance === 0 ? 'true' : 'false')
+    card.tabIndex = distance === 0 ? 0 : -1
+  })
+
+  loadNearbyGalleryImages()
+  if (announce && galleryStatus) {
+    galleryStatus.textContent = `Фотография ${activeGalleryImage + 1} из ${galleryCards.length}`
+  }
+}
+
+function selectGalleryImage(index, { announce = true } = {}) {
+  const count = galleryCards.length
+  if (!count) return
+  activeGalleryImage = ((index % count) + count) % count
+  galleryDragOffset = 0
+  renderGallery({ announce })
+}
+
+function handleGalleryWheel(event) {
+  if (document.body.dataset.page !== 'gallery') return
+  event.preventDefault()
+
+  const now = performance.now()
+  if (now < galleryWheelLockedUntil) return
+  const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+  if (Math.abs(delta) < 8) return
+
+  galleryWheelLockedUntil = now + 460
+  selectGalleryImage(activeGalleryImage + (delta > 0 ? 1 : -1))
+}
+
+function startGalleryDrag(event) {
+  if (event.button !== 0 && event.pointerType === 'mouse') return
+  galleryPointerId = event.pointerId
+  galleryPointerStartX = event.clientX
+  galleryPointerStartY = event.clientY
+  galleryDragOffset = 0
+  galleryViewport.classList.add('is-dragging')
+  galleryViewport.setPointerCapture(event.pointerId)
+}
+
+function moveGalleryDrag(event) {
+  if (event.pointerId !== galleryPointerId) return
+  const deltaX = event.clientX - galleryPointerStartX
+  const deltaY = event.clientY - galleryPointerStartY
+  galleryDragOffset = Math.max(-120, Math.min(120, Math.abs(deltaX) >= Math.abs(deltaY) ? deltaX : deltaY))
+  galleryCards.forEach((card) => { card.style.transition = 'none' })
+  renderGallery()
+}
+
+function finishGalleryDrag(event, allowChange = true) {
+  if (event.pointerId !== galleryPointerId) return
+
+  if (galleryViewport.hasPointerCapture(event.pointerId)) {
+    galleryViewport.releasePointerCapture(event.pointerId)
+  }
+  galleryViewport.classList.remove('is-dragging')
+  galleryCards.forEach((card) => { card.style.transition = '' })
+
+  const offset = galleryDragOffset
+  galleryPointerId = null
+  galleryDragOffset = 0
+  galleryIgnoreClick = Math.abs(offset) >= 8
+  if (allowChange && Math.abs(offset) >= 44) {
+    selectGalleryImage(activeGalleryImage + (offset < 0 ? 1 : -1))
+  } else {
+    renderGallery()
+  }
+  window.setTimeout(() => { galleryIgnoreClick = false }, 0)
+}
+
 function renderPage(page) {
   const isShowreel = page === 'showreel'
+  const isGallery = page === 'gallery'
 
   if (!isShowreel) {
     pauseAllShowreelMedia()
     closeMobileVimeo()
   }
 
-  document.body.dataset.page = isShowreel ? 'showreel' : 'home'
-  homePage.hidden = isShowreel
+  document.body.dataset.page = isShowreel ? 'showreel' : isGallery ? 'gallery' : 'home'
+  homePage.hidden = isShowreel || isGallery
   showreelPage.hidden = !isShowreel
+  galleryPage.hidden = !isGallery
+  document.querySelectorAll('[data-page-target]').forEach((item) => {
+    const isCurrent = item.dataset.pageTarget === document.body.dataset.page
+    item.setAttribute('aria-current', isCurrent ? 'page' : 'false')
+  })
   window.scrollTo(0, 0)
 
   if (isShowreel && window.matchMedia('(max-width: 1023px)').matches) {
@@ -511,6 +637,8 @@ function renderPage(page) {
     cancelMobileScrollHint()
     cancelDesktopScrollHint()
   }
+
+  if (isGallery) requestAnimationFrame(() => renderGallery())
 }
 
 function navigateToPage(page) {
@@ -518,9 +646,19 @@ function navigateToPage(page) {
   if (page === currentPage) return
 
   const baseUrl = `${window.location.pathname}${window.location.search}`
-  const nextUrl = page === 'showreel' ? `${baseUrl}#showreel` : baseUrl
+  const nextUrl = page === 'showreel'
+    ? `${baseUrl}#showreel`
+    : page === 'gallery'
+      ? `${baseUrl}#gallery`
+      : baseUrl
   window.history.pushState({ page }, '', nextUrl)
   renderPage(page)
+}
+
+function getPageFromLocation() {
+  if (window.location.hash === '#showreel') return 'showreel'
+  if (window.location.hash === '#gallery') return 'gallery'
+  return 'home'
 }
 
 function clearMobileActionState() {
@@ -553,7 +691,7 @@ function createPlayButton(item, media) {
   button.className = 'play-button'
   button.type = 'button'
   button.setAttribute('aria-label', `Смотреть: ${item.title}`)
-  icon.src = '/assets/play.svg'
+  icon.src = '/play.svg'
   icon.alt = ''
   button.append(icon)
 
@@ -869,6 +1007,19 @@ document.querySelectorAll('[data-page-target]').forEach((button) => {
   })
 })
 
+galleryCards.forEach((card, index) => {
+  card.addEventListener('click', () => {
+    if (galleryIgnoreClick) return
+    if (index !== activeGalleryImage) selectGalleryImage(index)
+  })
+})
+
+galleryViewport?.addEventListener('wheel', handleGalleryWheel, { passive: false })
+galleryViewport?.addEventListener('pointerdown', startGalleryDrag)
+galleryViewport?.addEventListener('pointermove', moveGalleryDrag)
+galleryViewport?.addEventListener('pointerup', (event) => finishGalleryDrag(event))
+galleryViewport?.addEventListener('pointercancel', (event) => finishGalleryDrag(event, false))
+
 document.querySelectorAll('[data-contact]').forEach((button) => {
   button.addEventListener('click', () => {
     openContacts()
@@ -967,6 +1118,18 @@ window.addEventListener('keydown', (event) => {
     return
   }
 
+  if (document.body.dataset.page === 'gallery') {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      selectGalleryImage(activeGalleryImage - 1)
+    }
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      selectGalleryImage(activeGalleryImage + 1)
+    }
+    return
+  }
+
   if (document.body.dataset.page !== 'showreel') return
 
   if (window.matchMedia('(max-width: 1023px)').matches) {
@@ -993,11 +1156,14 @@ window.addEventListener('keydown', (event) => {
 
 window.addEventListener('popstate', () => {
   closeContacts({ restoreHistory: false })
-  renderPage(window.location.hash === '#showreel' ? 'showreel' : 'home')
+  renderPage(getPageFromLocation())
   requestAnimationFrame(clearMobileActionState)
 })
 
 window.addEventListener('pageshow', () => requestAnimationFrame(clearMobileActionState))
+window.addEventListener('resize', () => {
+  if (document.body.dataset.page === 'gallery') renderGallery()
+})
 
 document.addEventListener('fullscreenchange', () => {
   if (activeVimeoOverlay?.dataset.enteredFullscreen === 'true' && !document.fullscreenElement) {
@@ -1026,5 +1192,5 @@ window.addEventListener('load', () => {
   }
 })
 
-renderPage(window.location.hash === '#showreel' ? 'showreel' : 'home')
+renderPage(getPageFromLocation())
 renderActiveShowreel()
