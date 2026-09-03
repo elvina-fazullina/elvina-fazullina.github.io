@@ -19,7 +19,12 @@ const SHOWREELS = [
     mobilePoster: '/showreel-birthday-poster.png',
     mobileVideo: '/showreel-birthday.mp4',
   },
-  { title: 'Свадьбы', placeholder: 'Скоро здесь будет видео' },
+  {
+    title: 'Свадьбы',
+    vimeo: 'https://player.vimeo.com/video/1223475384?app_id=122963',
+    mobilePoster: '/showreel-wedding-poster.png',
+    mobileVideo: '/showreel-wedding.mp4',
+  },
 ]
 
 const MOBILE_SCROLL_HINT_DELAY = 2_000
